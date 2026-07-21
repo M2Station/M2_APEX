@@ -1,0 +1,139 @@
+<Window x:Class="Listly.Views.QuickSwitchBar"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:b="clr-namespace:Listly.Behaviors"
+        Title="M2_APEX Quick Switch"
+        Width="560"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        Focusable="False"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="Card" Color="#F5121A28" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#FF2A3A4D" />
+        <SolidColorBrush x:Key="Text" Color="#CFE3F2" />
+        <SolidColorBrush x:Key="Subtle" Color="#8AA0B6" />
+        <SolidColorBrush x:Key="Accent" Color="#36D6FF" />
+        <SolidColorBrush x:Key="SelBrush" Color="#FF1D3B57" />
+        <SolidColorBrush x:Key="HoverBrush" Color="#FF15212F" />
+        <SolidColorBrush x:Key="Separator" Color="#FF1E2A3A" />
+
+        <Style x:Key="QsItemStyle" TargetType="ListBoxItem">
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" CornerRadius="7" Background="Transparent" Padding="10,6" Margin="6,1">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SelBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="12"
+            Background="{StaticResource Card}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.5" Color="#000000" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header: query + count -->
+            <Grid Grid.Row="0" Margin="14,12,14,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           FontFamily="Segoe MDL2 Assets"
+                           Text="&#xE721;"
+                           FontSize="17"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource Accent}" />
+
+                <TextBlock x:Name="QueryText"
+                           Grid.Column="1"
+                           Margin="10,0,0,0"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource Text}" />
+
+                <TextBlock x:Name="CountText"
+                           Grid.Column="2"
+                           Margin="10,0,0,0"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource Subtle}" />
+            </Grid>
+
+            <Border Grid.Row="1" Height="1" Background="{StaticResource Separator}" />
+
+            <!-- Results list -->
+            <ListBox x:Name="ResultsList"
+                     Grid.Row="2"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     MaxHeight="380"
+                     Focusable="False"
+                     Padding="0,6"
+                     ItemContainerStyle="{StaticResource QsItemStyle}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     HorizontalContentAlignment="Stretch">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       Text="{Binding Glyph}"
+                                       FontSize="16"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource Accent}" />
+
+                            <TextBlock Grid.Column="1"
+                                       b:Highlight.Result="{Binding}"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{StaticResource Text}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Border>
+</Window>
