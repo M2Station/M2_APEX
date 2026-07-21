@@ -36,6 +36,15 @@ public sealed class AppSettings
 
     public bool ShowFilesFirst { get; set; }
 
+    /// <summary>
+    /// Ordered list of locations that rank search results higher (earlier entries win).
+    /// Each entry is a folder path (e.g. <c>C:\</c>, <c>D:\Projects</c>, <c>%USERPROFILE%\src</c>)
+    /// or a well-known token (<c>Desktop</c>, <c>Documents</c>, <c>Downloads</c>,
+    /// <c>Pictures</c>, <c>Music</c>, <c>Videos</c>, <c>Home</c>). Results living under a
+    /// listed location float toward the top when the search bar is opened.
+    /// </summary>
+    public List<string> PriorityLocations { get; set; } = new();
+
     /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
     public string Theme { get; set; } = "low_key";
 

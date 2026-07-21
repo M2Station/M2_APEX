@@ -198,6 +198,11 @@
                 <TextBlock Text="Web search URL ({0} = query):" Margin="0,8,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
                 <TextBox x:Name="WebUrlBox" />
 
+                <TextBlock Text="Location priority &#8212; one per line, top = highest (e.g. Desktop, C:\, D:\):"
+                           Margin="0,10,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
+                <TextBox x:Name="PriorityBox" Height="90" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+
                 <TextBlock Text="Indexing" Style="{StaticResource Header}" />
                 <CheckBox x:Name="HiddenBox" Content="Include hidden files" />
                 <TextBlock Text="Indexed drives (one per line, blank = all fixed drives):"

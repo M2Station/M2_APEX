@@ -49,6 +49,8 @@ public sealed class SearchEngine
         AddCommandMatches(queryLower, candidates);
         AddFileMatches(queryLower, candidates, max);
 
+        ApplyLocationPriority(candidates);
+
         candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
 
         var top = candidates.Count > max ? candidates.GetRange(0, max) : candidates;
@@ -58,6 +60,101 @@ public sealed class SearchEngine
 
         top.Add(BuildWebResult(query));
         return top;
+    }
+
+    /// <summary>Score added per priority tier; the top location adds the most.</summary>
+    private const double PriorityStep = 3.0;
+
+    /// <summary>
+    /// Boosts results that live under the user's configured priority locations so the order
+    /// set in Settings (top = highest) floats those matches up the list. Additive, so a much
+    /// stronger name match elsewhere can still surface.
+    /// </summary>
+    private void ApplyLocationPriority(List<SearchResult> candidates)
+    {
+        var locations = ResolvePriorityLocations();
+        if (locations.Length == 0)
+            return;
+
+        foreach (var result in candidates)
+        {
+            int rank = PriorityRank(result.Path, locations);
+            if (rank >= 0)
+                result.Score += (locations.Length - rank) * PriorityStep;
+        }
+    }
+
+    /// <summary>Resolves the configured entries (tokens and paths) into full directory paths.</summary>
+    private string[] ResolvePriorityLocations()
+    {
+        var raw = _settings.PriorityLocations;
+        if (raw is null || raw.Count == 0)
+            return Array.Empty<string>();
+
+        var resolved = new List<string>(raw.Count);
+        foreach (var entry in raw)
+        {
+            var path = ResolveLocationEntry(entry);
+            if (path is not null)
+                resolved.Add(path);
+        }
+
+        return resolved.ToArray();
+    }
+
+    private static string? ResolveLocationEntry(string entry)
+    {
+        var text = entry?.Trim();
+        if (string.IsNullOrEmpty(text))
+            return null;
+
+        string? special = text.ToLowerInvariant() switch
+        {
+            "desktop" => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            "documents" or "my documents" => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "pictures" or "my pictures" => Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+            "music" or "my music" => Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+            "videos" or "my videos" => Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
+            "downloads" => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+            "home" or "user" or "userprofile" => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            _ => null
+        };
+
+        try
+        {
+            return Path.GetFullPath(special ?? Environment.ExpandEnvironmentVariables(text));
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Index of the first (highest-priority) location the path lives under, or -1.</summary>
+    private static int PriorityRank(string path, string[] locations)
+    {
+        if (string.IsNullOrEmpty(path))
+            return -1;
+
+        for (int i = 0; i < locations.Length; i++)
+        {
+            if (IsUnder(path, locations[i]))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static bool IsUnder(string path, string baseDir)
+    {
+        if (path.Equals(baseDir, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        bool hasSep = baseDir.EndsWith(Path.DirectorySeparatorChar) ||
+                      baseDir.EndsWith(Path.AltDirectorySeparatorChar);
+        string prefix = hasSep ? baseDir : baseDir + Path.DirectorySeparatorChar;
+
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private void AddAppMatches(string queryLower, List<SearchResult> candidates)

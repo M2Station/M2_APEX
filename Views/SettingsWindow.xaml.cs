@@ -45,6 +45,7 @@ public partial class SettingsWindow : Window
         FilesFirstBox.IsChecked = _settings.ShowFilesFirst;
         MaxResultsBox.Text = _settings.MaxResults.ToString();
         WebUrlBox.Text = _settings.WebSearchUrl;
+        PriorityBox.Text = string.Join(Environment.NewLine, _settings.PriorityLocations);
         HiddenBox.IsChecked = _settings.IndexHiddenFiles;
         DrivesBox.Text = string.Join(Environment.NewLine, _settings.IndexedDrives);
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
@@ -68,6 +69,7 @@ public partial class SettingsWindow : Window
         if (!string.IsNullOrWhiteSpace(WebUrlBox.Text))
             _settings.WebSearchUrl = WebUrlBox.Text.Trim();
 
+        _settings.PriorityLocations = SplitLines(PriorityBox.Text);
         _settings.IndexedDrives = SplitLines(DrivesBox.Text);
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
 
