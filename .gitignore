@@ -5,6 +5,7 @@
 publish/
 [Pp]ublish/
 artifacts/
+[Dd]ist/
 
 # ---- Visual Studio / Rider / VS Code ----
 .vs/
