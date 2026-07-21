@@ -47,11 +47,27 @@ public sealed class QuickSwitchService
         _bar.ItemInvoked += OnBarItemInvoked;
     }
 
+    /// <summary>
+    /// Optional predicate. When it returns <c>true</c> — e.g. the main search window is open —
+    /// Quick Switch stays dormant and passes keys through, so focus remains on that window
+    /// until the user dismisses it (Esc). Prevents the double-Ctrl search bar and Quick Switch
+    /// from fighting over File Explorer keystrokes.
+    /// </summary>
+    public Func<bool>? Suppressed { get; set; }
+
     /// <summary>Fast key filter installed into <see cref="HotkeyService"/>. Returns true to swallow.</summary>
     public bool OnKeyDown(int vk, ModifierState mods)
     {
         if (!_settings.EnableQuickSwitch)
             return false;
+
+        // Stand down entirely while the main search window owns the screen.
+        if (Suppressed?.Invoke() == true)
+        {
+            if (_open)
+                Post(Close);
+            return false;
+        }
 
         var foreground = NativeMethods.GetForegroundWindow();
 

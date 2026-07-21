@@ -59,15 +59,41 @@ public partial class SearchWindow : Window
         Top = area.Top + area.Height * 0.16;
 
         Show();
-        Activate();
         Topmost = true;
 
         var hwnd = new WindowInteropHelper(this).Handle;
-        NativeMethods.SetForegroundWindow(hwnd);
+        ForceForeground(hwnd);
+        Activate();
 
         QueryBox.Focus();
         Keyboard.Focus(QueryBox);
         QueryBox.SelectAll();
+    }
+
+    /// <summary>
+    /// Reliably pulls this window to the foreground from a background process. A background
+    /// process cannot normally steal focus, so we briefly attach to the currently focused
+    /// thread's input queue. This bypasses the Windows foreground lock so typing lands in the
+    /// search box instead of the app that was focused when the hotkey fired (e.g. Explorer).
+    /// </summary>
+    private static void ForceForeground(IntPtr hwnd)
+    {
+        IntPtr foreground = NativeMethods.GetForegroundWindow();
+        uint foreThread = NativeMethods.GetWindowThreadProcessId(foreground, out _);
+        uint thisThread = NativeMethods.GetCurrentThreadId();
+
+        if (foreThread != 0 && foreThread != thisThread)
+        {
+            NativeMethods.AttachThreadInput(foreThread, thisThread, true);
+            NativeMethods.BringWindowToTop(hwnd);
+            NativeMethods.SetForegroundWindow(hwnd);
+            NativeMethods.AttachThreadInput(foreThread, thisThread, false);
+        }
+        else
+        {
+            NativeMethods.BringWindowToTop(hwnd);
+            NativeMethods.SetForegroundWindow(hwnd);
+        }
     }
 
     public void HideSearch()

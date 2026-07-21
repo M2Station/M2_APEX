@@ -52,6 +52,7 @@ public partial class App : System.Windows.Application
         _windowIcon = Assets.M2Logo.RenderBitmap(64, Assets.M2Logo.Foreground, Assets.M2Logo.BadgeBackground);
 
         _settings = AppSettings.Load();
+        ThemeManager.Apply(_settings.Theme);
         _usage = new UsageTracker();
         _fileIndex = new FileIndexService(_settings);
         _appIndex = new AppIndexService();
@@ -64,6 +65,8 @@ public partial class App : System.Windows.Application
 
         _quickSwitchBar = new QuickSwitchBar();
         _quickSwitch = new QuickSwitchService(_settings, _quickSwitchBar);
+        // While the main search bar is open, keep Quick Switch dormant so focus stays on it.
+        _quickSwitch.Suppressed = () => _window.IsVisible;
 
         _fileIndex.StatusChanged += status =>
             Dispatcher.BeginInvoke(() => _viewModel.Status = status);

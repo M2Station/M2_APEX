@@ -20,15 +20,6 @@
         <b:KindToLabelConverter x:Key="KindToLabel" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-        <SolidColorBrush x:Key="CardBrush" Color="#F5121A28" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#FF2A3A4D" />
-        <SolidColorBrush x:Key="TextBrush" Color="#CFE3F2" />
-        <SolidColorBrush x:Key="SubtleBrush" Color="#8AA0B6" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#36D6FF" />
-        <SolidColorBrush x:Key="SelBrush" Color="#FF1D3B57" />
-        <SolidColorBrush x:Key="HoverBrush" Color="#FF15212F" />
-        <SolidColorBrush x:Key="SeparatorBrush" Color="#FF1E2A3A" />
-
         <Style x:Key="ResultItemStyle" TargetType="ListBoxItem">
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Focusable" Value="False" />
@@ -44,10 +35,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SelBrush}" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeSelectedBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -58,8 +49,8 @@
 
     <Border Margin="18"
             CornerRadius="14"
-            Background="{StaticResource CardBrush}"
-            BorderBrush="{StaticResource BorderBrush}"
+            Background="{DynamicResource ThemeCardBrush}"
+            BorderBrush="{DynamicResource ThemeBorderBrush}"
             BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.55" Color="#000000" />
@@ -92,7 +83,7 @@
                     <TextBlock Text="Search files, apps, commands, and the web…"
                                VerticalAlignment="Center"
                                FontSize="20"
-                               Foreground="{StaticResource SubtleBrush}"
+                               Foreground="{DynamicResource ThemeSubtleBrush}"
                                IsHitTestVisible="False">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -110,19 +101,19 @@
                              Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"
                              BorderThickness="0"
                              Background="Transparent"
-                             Foreground="{StaticResource TextBrush}"
-                             CaretBrush="{StaticResource AccentBrush}"
+                             Foreground="{DynamicResource ThemeTextBrush}"
+                             CaretBrush="{DynamicResource ThemeAccentBrush}"
                              FontSize="20"
                              VerticalContentAlignment="Center"
                              Padding="0"
-                             SelectionBrush="{StaticResource AccentBrush}" />
+                             SelectionBrush="{DynamicResource ThemeAccentBrush}" />
                 </Grid>
             </Grid>
 
             <!-- Separator (only when there are results) -->
             <Border Grid.Row="1"
                     Height="1"
-                    Background="{StaticResource SeparatorBrush}"
+                    Background="{DynamicResource ThemeSeparatorBrush}"
                     Visibility="{Binding HasItems, ElementName=ResultsList, Converter={StaticResource BoolToVis}}" />
 
             <!-- Results -->
@@ -153,16 +144,16 @@
                                        Text="{Binding Glyph}"
                                        FontSize="18"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource AccentBrush}" />
+                                       Foreground="{DynamicResource ThemeAccentBrush}" />
 
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock b:Highlight.Result="{Binding}"
                                            FontSize="15"
-                                           Foreground="{StaticResource TextBrush}"
+                                           Foreground="{DynamicResource ThemeTextBrush}"
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock Text="{Binding Subtitle}"
                                            FontSize="11.5"
-                                           Foreground="{StaticResource SubtleBrush}"
+                                           Foreground="{DynamicResource ThemeSubtleBrush}"
                                            TextTrimming="CharacterEllipsis"
                                            Margin="0,1,0,0" />
                             </StackPanel>
@@ -172,7 +163,7 @@
                                        FontSize="10.5"
                                        VerticalAlignment="Center"
                                        Margin="10,0,4,0"
-                                       Foreground="{StaticResource SubtleBrush}" />
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -185,12 +176,12 @@
                 <Grid Margin="16,7">
                     <TextBlock Text="{Binding Status}"
                                FontSize="11"
-                               Foreground="{StaticResource SubtleBrush}"
+                               Foreground="{DynamicResource ThemeSubtleBrush}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
                     <TextBlock HorizontalAlignment="Right"
                                FontSize="11"
-                               Foreground="{StaticResource SubtleBrush}"
+                               Foreground="{DynamicResource ThemeSubtleBrush}"
                                Text="&#x2191;&#x2193; navigate &#160;&#160;&#x21B5; open &#160;&#160;Ctrl+&#x21B5; folder &#160;&#160;Esc close" />
                 </Grid>
             </Border>

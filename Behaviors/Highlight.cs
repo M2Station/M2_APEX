@@ -1,12 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
 
 using Listly.Models;
-
-using Brush = System.Windows.Media.Brush;
-using Color = System.Windows.Media.Color;
 
 namespace Listly.Behaviors;
 
@@ -16,14 +12,6 @@ namespace Listly.Behaviors;
 /// </summary>
 public static class Highlight
 {
-    private static readonly Brush MatchBrush =
-        new SolidColorBrush(Color.FromRgb(0x36, 0xD6, 0xFF));
-
-    static Highlight()
-    {
-        MatchBrush.Freeze();
-    }
-
     public static readonly DependencyProperty ResultProperty =
         DependencyProperty.RegisterAttached(
             "Result",
@@ -68,7 +56,7 @@ public static class Highlight
             var run = new Run(buffer.ToString());
             if (bufferMatched)
             {
-                run.Foreground = MatchBrush;
+                run.SetResourceReference(TextElement.ForegroundProperty, "ThemeAccentBrush");
                 run.FontWeight = FontWeights.SemiBold;
             }
 

@@ -17,15 +17,6 @@
         UseLayoutRounding="True">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="Card" Color="#F5121A28" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#FF2A3A4D" />
-        <SolidColorBrush x:Key="Text" Color="#CFE3F2" />
-        <SolidColorBrush x:Key="Subtle" Color="#8AA0B6" />
-        <SolidColorBrush x:Key="Accent" Color="#36D6FF" />
-        <SolidColorBrush x:Key="SelBrush" Color="#FF1D3B57" />
-        <SolidColorBrush x:Key="HoverBrush" Color="#FF15212F" />
-        <SolidColorBrush x:Key="Separator" Color="#FF1E2A3A" />
-
         <Style x:Key="QsItemStyle" TargetType="ListBoxItem">
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Template">
@@ -36,10 +27,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource SelBrush}" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeSelectedBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -49,8 +40,8 @@
     </Window.Resources>
 
     <Border CornerRadius="12"
-            Background="{StaticResource Card}"
-            BorderBrush="{StaticResource BorderBrush}"
+            Background="{DynamicResource ThemeCardBrush}"
+            BorderBrush="{DynamicResource ThemeBorderBrush}"
             BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.5" Color="#000000" />
@@ -76,7 +67,7 @@
                            Text="&#xE721;"
                            FontSize="17"
                            VerticalAlignment="Center"
-                           Foreground="{StaticResource Accent}" />
+                           Foreground="{DynamicResource ThemeAccentBrush}" />
 
                 <TextBlock x:Name="QueryText"
                            Grid.Column="1"
@@ -85,17 +76,17 @@
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
-                           Foreground="{StaticResource Text}" />
+                           Foreground="{DynamicResource ThemeTextBrush}" />
 
                 <TextBlock x:Name="CountText"
                            Grid.Column="2"
                            Margin="10,0,0,0"
                            FontSize="12"
                            VerticalAlignment="Center"
-                           Foreground="{StaticResource Subtle}" />
+                           Foreground="{DynamicResource ThemeSubtleBrush}" />
             </Grid>
 
-            <Border Grid.Row="1" Height="1" Background="{StaticResource Separator}" />
+            <Border Grid.Row="1" Height="1" Background="{DynamicResource ThemeSeparatorBrush}" />
 
             <!-- Results list -->
             <ListBox x:Name="ResultsList"
@@ -122,14 +113,14 @@
                                        Text="{Binding Glyph}"
                                        FontSize="16"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource Accent}" />
+                                       Foreground="{DynamicResource ThemeAccentBrush}" />
 
                             <TextBlock Grid.Column="1"
                                        b:Highlight.Result="{Binding}"
                                        FontSize="14"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
-                                       Foreground="{StaticResource Text}" />
+                                       Foreground="{DynamicResource ThemeTextBrush}" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

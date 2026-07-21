@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 using Listly.Models;
 using Listly.Services;
@@ -10,6 +11,8 @@ public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
+    private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
+    private bool _loadingTheme;
 
     public SettingsWindow(AppSettings settings, FileIndexService fileIndex)
     {
@@ -22,11 +25,19 @@ public partial class SettingsWindow : Window
         _fileIndex.StatusChanged += OnIndexStatus;
         Closed += (_, _) => _fileIndex.StatusChanged -= OnIndexStatus;
 
+        // Revert any unsaved live theme preview back to the persisted choice.
+        Closed += (_, _) => ThemeManager.Apply(_settings.Theme);
+
         IndexStatus.Text = $"{_fileIndex.Count:N0} items indexed";
     }
 
     private void LoadFromSettings()
     {
+        _loadingTheme = true;
+        ThemeBox.ItemsSource = _themes.Select(t => t.Name).ToList();
+        ThemeBox.SelectedIndex = Math.Max(0, IndexOfTheme(ThemeManager.Normalize(_settings.Theme)));
+        _loadingTheme = false;
+
         DoubleCtrlBox.IsChecked = _settings.EnableDoubleCtrl;
         AltSpaceBox.IsChecked = _settings.EnableAltSpace;
         QuickSwitchBox.IsChecked = _settings.EnableQuickSwitch;
@@ -60,6 +71,9 @@ public partial class SettingsWindow : Window
         _settings.IndexedDrives = SplitLines(DrivesBox.Text);
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
 
+        if (ThemeBox.SelectedIndex >= 0)
+            _settings.Theme = _themes[ThemeBox.SelectedIndex].Id;
+
         _settings.Save();
         StartupService.SetEnabled(StartupBox.IsChecked == true);
 
@@ -76,6 +90,23 @@ public partial class SettingsWindow : Window
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingTheme || ThemeBox.SelectedIndex < 0)
+            return;
+
+        // Live preview across every open window; persisted only on Save.
+        ThemeManager.Apply(_themes[ThemeBox.SelectedIndex].Id);
+    }
+
+    private int IndexOfTheme(string id)
+    {
+        for (int i = 0; i < _themes.Count; i++)
+            if (_themes[i].Id == id)
+                return i;
+        return -1;
+    }
 
     private void OnIndexStatus(string status)
     {

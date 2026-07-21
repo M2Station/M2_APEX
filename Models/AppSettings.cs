@@ -36,6 +36,9 @@ public sealed class AppSettings
 
     public bool ShowFilesFirst { get; set; }
 
+    /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
+    public string Theme { get; set; } = "low_key";
+
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
 
