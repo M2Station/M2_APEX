@@ -12,7 +12,7 @@
     "SearchDirs": []
   },
   {
-    "Label": "Beyond Compare",
+    "Label": "Beyond Compare P1:P2",
     "Arguments": "\"{left}\" \"{right}\"",
     "ExeNames": [ "BCompare", "BComp" ],
     "SearchDirs": [
