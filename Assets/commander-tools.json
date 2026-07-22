@@ -13,7 +13,7 @@
   },
   {
     "Label": "Beyond Compare",
-    "Arguments": "\"{path}\"",
+    "Arguments": "\"{left}\" \"{right}\"",
     "ExeNames": [ "BCompare", "BComp" ],
     "SearchDirs": [
       "%ProgramFiles%\\Beyond Compare 5",
