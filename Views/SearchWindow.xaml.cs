@@ -38,6 +38,26 @@ public partial class SearchWindow : Window
         ResultsList.SelectionChanged += (_, _) => ScrollSelectedIntoView();
     }
 
+    /// <summary>Bottom-bar "Ctrl+`" link: shows a short animated demo of opening M2_Commander.</summary>
+    private void OnCommanderHintClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        new GifPreviewWindow(CommanderGifUri(_settings.Theme)) { Icon = Icon }.Show();
+    }
+
+    /// <summary>Pack URI of the Ctrl+` demo GIF for the active theme (themes without their own use Low Key).</summary>
+    private static Uri CommanderGifUri(string? theme)
+    {
+        string name = theme switch
+        {
+            "daylight" => "daylight",
+            "army" => "army",
+            "army_dark" => "army_dark",
+            _ => "low_key",
+        };
+        return new Uri($"pack://application:,,,/Assets/gif/ctrl-backtick-{name}.gif", UriKind.Absolute);
+    }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);

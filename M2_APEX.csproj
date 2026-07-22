@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\Strings.json" />
+    <Resource Include="Assets\gif\*.gif" />
   </ItemGroup>
 
 </Project>
