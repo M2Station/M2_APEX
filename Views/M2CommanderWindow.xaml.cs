@@ -1303,10 +1303,11 @@ public partial class M2CommanderWindow : Window
             menu.Items.Add(ActionItem(Loc.T("commander.menu.bcCompare"), string.Empty, true, RunBeyondCompare));
         }
 
-        if (_settings.CommanderCommands.Count > 0)
+        var commands = UsableCommands();
+        if (commands.Count > 0)
         {
             menu.Items.Add(new Separator());
-            foreach (var cmd in _settings.CommanderCommands)
+            foreach (var cmd in commands)
             {
                 var captured = cmd;
                 menu.Items.Add(ActionItem(cmd.Label, string.Empty, true, () => RunCommand(captured)));
@@ -1344,12 +1345,17 @@ public partial class M2CommanderWindow : Window
 
     // --- Custom launcher commands (buttons under the grid + F11 editor) -----
 
+    /// <summary>Custom commands with both a label and a program path — the only ones shown in the
+    /// F1 menu and the button strip. A blank program hides the entry entirely.</summary>
+    private List<CommanderCommand> UsableCommands() =>
+        _settings.CommanderCommands
+            .Where(c => !string.IsNullOrWhiteSpace(c.Label) && !string.IsNullOrWhiteSpace(c.Path))
+            .ToList();
+
     private void RefreshCommandBar()
     {
         CommandBar.ItemsSource = null;
-        CommandBar.ItemsSource = _settings.CommanderCommands
-            .Where(c => !string.IsNullOrWhiteSpace(c.Label))
-            .ToList();
+        CommandBar.ItemsSource = UsableCommands();
     }
 
     private void OnCommandButtonClick(object sender, RoutedEventArgs e)
