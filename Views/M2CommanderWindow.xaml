@@ -407,6 +407,13 @@
                                Margin="0,4,0,12"
                                Foreground="{DynamicResource ThemeSubtleBrush}" />
 
+                    <CheckBox DockPanel.Dock="Top"
+                              x:Name="ForceEnglishCheck"
+                              Content="{b:Loc commander.cmd.forceEnglish}"
+                              FontSize="12.5"
+                              Margin="0,0,0,12"
+                              Foreground="{DynamicResource ThemeTextBrush}" />
+
                     <!-- Action buttons -->
                     <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
                         <Button Content="{b:Loc commander.cmd.add}"

@@ -39,6 +39,9 @@ public partial class M2CommanderWindow : Window
     // Source of the last COPY, re-used by PASTE (pane-to-pane; no OS clipboard).
     private string? _clipSource;
 
+    // Active type-to-filter text for the current pane (empty = no filter).
+    private string _filterText = string.Empty;
+
     // Pseudo-location shown above drive roots: a "This PC" listing of every drive.
     private const string DrivesView = "::drives::";
 
@@ -54,6 +57,8 @@ public partial class M2CommanderWindow : Window
         ("Ctrl+V", "commander.k.paste"),
         ("F2", "commander.k.rename"),
         ("Del", "commander.k.delete"),
+        ("Shift+Del", "commander.k.fastDelete"),
+        ("A–Z", "commander.k.filter"),
         ("Ctrl+U", "commander.k.swap"),
         ("Ctrl+R", "commander.k.refresh"),
         ("F11", "commander.k.commands"),
@@ -84,6 +89,7 @@ public partial class M2CommanderWindow : Window
         RightList.SelectionChanged += (_, _) => { if (_active == _right) UpdateStatus(); };
 
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewTextInput += OnPreviewTextInput;
         PreviewMouseDown += OnWindowMouseDown;
 
         RefreshCommandBar();
@@ -109,6 +115,7 @@ public partial class M2CommanderWindow : Window
 
         Activate();
         FocusSelected(_active);
+        SwitchToEnglishInput();
     }
 
     // --- Navigation ---------------------------------------------------------
@@ -251,10 +258,9 @@ public partial class M2CommanderWindow : Window
         if (sel is null || sel.IsParent)
             return;
 
-        // Norton-style: copy straight into the other pane, and remember the source so PASTE can
-        // drop another copy wherever the active pane is later pointed.
+        // Just mark the source; the actual copy happens on PASTE (Ctrl+V) into the active pane.
         _clipSource = sel.Path;
-        ShellOp(NativeMethods.FO_COPY, sel.Path, Other(_active).Dir, 0);
+        StatusText.Text = Loc.T("commander.copiedMark", sel.Name);
     }
 
     private void PasteClipboard()
@@ -307,6 +313,92 @@ public partial class M2CommanderWindow : Window
 
         RefreshBoth();
         FocusSelected(_active);
+    }
+
+    /// <summary>
+    /// "Fast delete" for large folders: robocopy-mirrors an empty temp folder over the target
+    /// (multithreaded, no Recycle Bin / shell progress overhead) then removes the emptied folder.
+    /// Files just use File.Delete. Folders are irreversible, so they ask for YES/NO confirmation.
+    /// </summary>
+    private void FastDeleteSelected()
+    {
+        var sel = ActiveSelected();
+        if (sel is null || sel.IsParent)
+            return;
+
+        if (sel.IsFolder)
+        {
+            string path = sel.Path;
+
+            // Guard against wiping a whole drive: robocopy /MIR has no shell safety net.
+            var root = Path.GetPathRoot(path);
+            if (string.IsNullOrEmpty(path) || (root is not null && PathEquals(path, root)))
+            {
+                Warn(Loc.T("commander.fastDelBlocked"));
+                return;
+            }
+
+            var confirm = MessageBox.Show(this, Loc.T("commander.fastDelConfirm", sel.Name),
+                "M2_Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            StatusText.Text = Loc.T("commander.fastDelRunning", sel.Name);
+
+            Task.Run(() => FastDeleteFolder(path)).ContinueWith(t =>
+                Dispatcher.Invoke(() =>
+                {
+                    if (t.Exception is not null)
+                        Warn(t.Exception.GetBaseException().Message);
+                    RefreshBoth();
+                    FocusSelected(_active);
+                }), TaskScheduler.Default);
+        }
+        else
+        {
+            try { File.Delete(sel.Path); }
+            catch (Exception ex) { Warn(ex.Message); }
+            RefreshPane(_active);
+            FocusSelected(_active);
+        }
+    }
+
+    private static void FastDeleteFolder(string target)
+    {
+        string empty = Path.Combine(Path.GetTempPath(), "m2_empty_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(empty);
+        try
+        {
+            // robocopy <empty> <target> /MIR clears the tree fast; arguments go through ArgumentList
+            // (not a shell) so paths with spaces or special characters cannot be misinterpreted.
+            var psi = new ProcessStartInfo("robocopy")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            foreach (var arg in new[]
+                     {
+                         empty, target, "/MIR", "/MT:16", "/R:1", "/W:1",
+                         "/NFL", "/NDL", "/NJH", "/NJS", "/NC", "/NS", "/NP"
+                     })
+            {
+                psi.ArgumentList.Add(arg);
+            }
+
+            using (var proc = Process.Start(psi))
+            {
+                proc?.WaitForExit();
+            }
+
+            if (Directory.Exists(target))
+                Directory.Delete(target, recursive: true);
+        }
+        finally
+        {
+            try { if (Directory.Exists(empty)) Directory.Delete(empty, recursive: true); }
+            catch { /* temp cleanup is best effort */ }
+        }
     }
 
     private void PromptMkdir()
@@ -523,6 +615,11 @@ public partial class M2CommanderWindow : Window
 
     private void CommitEntries(Pane pane, string dir, List<CommanderEntry> entries, string? selectName)
     {
+        // A fresh listing drops any active type-to-filter so it does not hide the new folder.
+        pane.List.Items.Filter = null;
+        if (_active == pane)
+            _filterText = string.Empty;
+
         pane.Dir = dir;
         pane.Entries.Clear();
         foreach (var entry in entries)
@@ -581,6 +678,10 @@ public partial class M2CommanderWindow : Window
             return;
         }
 
+        // The filter belongs to the pane being left; clear it before switching.
+        _active.List.Items.Filter = null;
+        _filterText = string.Empty;
+
         _active = pane;
         UpdateActiveVisual();
         UpdateStatus();
@@ -628,7 +729,8 @@ public partial class M2CommanderWindow : Window
         int count = pane.Entries.Count(e => !e.IsParent);
         var sel = ActiveSelected();
         string selInfo = sel is null || sel.IsParent ? string.Empty : $"    ▸ {sel.Name}   {sel.SizeText}";
-        StatusText.Text = $"{DisplayPath(pane.Dir)}    ({count})" + selInfo;
+        string filter = _filterText.Length > 0 ? $"    🔍 {_filterText}" : string.Empty;
+        StatusText.Text = $"{DisplayPath(pane.Dir)}    ({count})" + selInfo + filter;
     }
 
     // --- Prompt overlay -----------------------------------------------------
@@ -741,6 +843,7 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.paste"), "Ctrl+V", canPaste, PasteClipboard));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, hasItem, MoveSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.delete"), "Del", hasItem, DeleteSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.fastDelete"), "Shift+Del", hasItem, FastDeleteSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.rename"), "F2", hasItem, PromptRename));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
@@ -817,6 +920,7 @@ public partial class M2CommanderWindow : Window
         foreach (var cmd in _settings.CommanderCommands)
             _editCommands.Add(new CommanderCommand { Label = cmd.Label, Path = cmd.Path, Arguments = cmd.Arguments });
 
+        ForceEnglishCheck.IsChecked = _settings.CommanderForceEnglishInput;
         CommandEditorList.ItemsSource = _editCommands;
         CommandEditorOverlay.Visibility = Visibility.Visible;
     }
@@ -880,6 +984,7 @@ public partial class M2CommanderWindow : Window
         }
 
         _settings.CommanderCommands = cleaned;
+        _settings.CommanderForceEnglishInput = ForceEnglishCheck.IsChecked == true;
         _settings.Save();
         RefreshCommandBar();
         CloseCommandEditor();
@@ -985,7 +1090,15 @@ public partial class M2CommanderWindow : Window
                 e.Handled = true;
                 break;
             case Key.Back:
-                GoUp(_active);
+                if (_filterText.Length > 0)
+                {
+                    _filterText = _filterText[..^1];
+                    ApplyFilter();
+                }
+                else
+                {
+                    GoUp(_active);
+                }
                 e.Handled = true;
                 break;
             case Key.F1:
@@ -994,6 +1107,10 @@ public partial class M2CommanderWindow : Window
                 break;
             case Key.F2:
                 PromptRename();
+                e.Handled = true;
+                break;
+            case Key.Delete when (mods & ModifierKeys.Shift) == ModifierKeys.Shift:
+                FastDeleteSelected();
                 e.Handled = true;
                 break;
             case Key.Delete:
@@ -1021,7 +1138,10 @@ public partial class M2CommanderWindow : Window
                 e.Handled = true;
                 break;
             case Key.Escape:
-                Close();
+                if (_filterText.Length > 0)
+                    ClearFilter();
+                else
+                    Close();
                 e.Handled = true;
                 break;
             case Key.U when mods == ModifierKeys.Control:
@@ -1032,6 +1152,118 @@ public partial class M2CommanderWindow : Window
                 RefreshBoth();
                 e.Handled = true;
                 break;
+        }
+    }
+
+    // --- Type-to-filter / input language ------------------------------------
+
+    private void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (HelpOverlay.Visibility == Visibility.Visible
+            || CommandEditorOverlay.Visibility == Visibility.Visible
+            || PromptOverlay.Visibility == Visibility.Visible)
+            return;
+
+        // Ctrl/Alt combos are shortcuts, not filter text.
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
+            return;
+
+        string text = e.Text;
+        if (string.IsNullOrEmpty(text) || char.IsControl(text[0]))
+            return;
+
+        _filterText += text;
+        ApplyFilter();
+        e.Handled = true;
+    }
+
+    private void ApplyFilter()
+    {
+        var list = _active.List;
+        if (_filterText.Length == 0)
+        {
+            list.Items.Filter = null;
+        }
+        else
+        {
+            string query = _filterText.ToLowerInvariant();
+            list.Items.Filter = o =>
+                o is CommanderEntry entry
+                && (entry.IsParent || FuzzyMatcher.Score(query, entry.Name) > FuzzyMatcher.NoMatch);
+        }
+
+        SelectBestFilterMatch();
+        UpdateStatus();
+        if (IsLoaded)
+            FocusSelected(_active);
+    }
+
+    private void ClearFilter()
+    {
+        if (_filterText.Length == 0)
+            return;
+
+        // Unfiltering keeps the currently selected item selected (WPF preserves SelectedItem).
+        _filterText = string.Empty;
+        _active.List.Items.Filter = null;
+        UpdateStatus();
+        FocusSelected(_active);
+    }
+
+    /// <summary>Selects the highest-scoring visible entry for the current filter (skipping "..").</summary>
+    private void SelectBestFilterMatch()
+    {
+        var list = _active.List;
+        if (list.Items.Count == 0)
+            return;
+
+        if (_filterText.Length == 0)
+        {
+            list.SelectedIndex = 0;
+            list.ScrollIntoView(list.SelectedItem);
+            return;
+        }
+
+        string query = _filterText.ToLowerInvariant();
+        int bestIndex = -1;
+        double bestScore = double.NegativeInfinity;
+        for (int i = 0; i < list.Items.Count; i++)
+        {
+            if (list.Items[i] is not CommanderEntry entry || entry.IsParent)
+                continue;
+
+            double score = FuzzyMatcher.Score(query, entry.Name);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+
+        list.SelectedIndex = bestIndex >= 0 ? bestIndex : 0;
+        if (list.SelectedItem != null)
+            list.ScrollIntoView(list.SelectedItem);
+    }
+
+    /// <summary>Switches this window's keyboard layout to English (en-US) when the setting is on.</summary>
+    private void SwitchToEnglishInput()
+    {
+        if (!_settings.CommanderForceEnglishInput)
+            return;
+
+        try
+        {
+            var hkl = NativeMethods.LoadKeyboardLayout("00000409", NativeMethods.KLF_ACTIVATE);
+            if (hkl == IntPtr.Zero)
+                return;
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+                NativeMethods.PostMessage(hwnd, (uint)NativeMethods.WM_INPUTLANGCHANGEREQUEST, IntPtr.Zero, hkl);
+        }
+        catch
+        {
+            // Best effort; input-language switching is non-critical.
         }
     }
 

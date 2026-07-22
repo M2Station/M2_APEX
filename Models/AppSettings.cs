@@ -84,6 +84,12 @@ public sealed class AppSettings
     /// </summary>
     public List<CommanderCommand> CommanderCommands { get; set; } = CommanderCommand.DefaultSeed();
 
+    /// <summary>
+    /// When true, activating M2_Commander switches the keyboard layout to English (en-US) so its
+    /// type-to-filter accepts Latin letters right away. Toggle in the F11 settings screen.
+    /// </summary>
+    public bool CommanderForceEnglishInput { get; set; } = true;
+
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
 

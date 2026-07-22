@@ -81,6 +81,18 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool LockWorkStation();
 
+    // --- Input language: M2_Commander can force the English (en-US) layout on open so its
+    //     type-to-filter accepts Latin letters immediately (toggle in F11 settings). ---
+    public const int WM_INPUTLANGCHANGEREQUEST = 0x0050;
+    public const uint KLF_ACTIVATE = 0x00000001;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr LoadKeyboardLayout(string pwszKLID, uint Flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
     public const uint SHERB_NOCONFIRMATION = 0x00000001;
     public const uint SHERB_NOPROGRESSUI = 0x00000002;
     public const uint SHERB_NOSOUND = 0x00000004;
