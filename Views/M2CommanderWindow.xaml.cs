@@ -32,6 +32,7 @@ public partial class M2CommanderWindow : Window
     private Action<string>? _promptAction;
 
     private readonly AppSettings _settings;
+    private readonly FileIndexService _fileIndex;
 
     // Working copy edited by the F11 overlay; committed to _settings only on Save.
     private readonly ObservableCollection<CommanderCommand> _editCommands = new();
@@ -68,9 +69,10 @@ public partial class M2CommanderWindow : Window
         ("F10 / Esc", "commander.k.quit"),
     };
 
-    public M2CommanderWindow(AppSettings settings)
+    public M2CommanderWindow(AppSettings settings, FileIndexService fileIndex)
     {
         _settings = settings;
+        _fileIndex = fileIndex;
         InitializeComponent();
 
         _left = new Pane { List = LeftList, Header = LeftPath, PaneBorder = LeftPane, HeaderBar = LeftHeaderBar };
@@ -938,12 +940,101 @@ public partial class M2CommanderWindow : Window
             _editCommands.Add(new CommanderCommand { Label = cmd.Label, Path = cmd.Path, Arguments = cmd.Arguments });
 
         ForceEnglishCheck.IsChecked = _settings.CommanderForceEnglishInput;
+        AutoDetectResult.Text = string.Empty;
         CommandEditorList.ItemsSource = _editCommands;
         CommandEditorOverlay.Visibility = Visibility.Visible;
     }
 
     private void OnCommandAddClick(object sender, RoutedEventArgs e) =>
         _editCommands.Add(new CommanderCommand { Arguments = "\"{path}\"" });
+
+    /// <summary>
+    /// F11 "Auto detect": ensures rows exist for the well-known tools (M2_ST4 / M2_LOG / VS Code)
+    /// and fills any blank Program path by looking the label up in the app's file index (VS Code
+    /// uses its known install locations). Existing user-set paths are never overwritten.
+    /// </summary>
+    private void OnCommandAutoDetectClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var label in new[] { "M2_ST4", "M2_LOG", "VS Code" })
+        {
+            if (!_editCommands.Any(c => string.Equals(c.Label?.Trim(), label, StringComparison.OrdinalIgnoreCase)))
+                _editCommands.Add(new CommanderCommand { Label = label, Arguments = "\"{path}\"" });
+        }
+
+        int filled = 0, targets = 0;
+        foreach (var cmd in _editCommands)
+        {
+            if (!string.IsNullOrWhiteSpace(cmd.Path))
+                continue;
+
+            targets++;
+            var found = DetectProgram(cmd.Label);
+            if (found is null)
+                continue;
+
+            cmd.Path = found;
+            if (string.IsNullOrWhiteSpace(cmd.Arguments))
+                cmd.Arguments = "\"{path}\"";
+            filled++;
+        }
+
+        AutoDetectResult.Text = Loc.T("commander.cmd.autoResult", filled, targets);
+    }
+
+    /// <summary>Resolves a launcher label to an executable path (VS Code first, then the index).</summary>
+    private string? DetectProgram(string? label)
+    {
+        var name = label?.Trim();
+        if (string.IsNullOrEmpty(name))
+            return null;
+
+        if (name.Replace(" ", string.Empty).Equals("vscode", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("code", StringComparison.OrdinalIgnoreCase))
+            return CommanderCommand.FindVsCode() ?? FindInIndex("Code");
+
+        return FindInIndex(name);
+    }
+
+    /// <summary>
+    /// Best executable in the file index whose base name matches <paramref name="name"/> (spaces,
+    /// underscores and hyphens ignored). Prefers .exe over .bat/.cmd, then the shortest path.
+    /// </summary>
+    private string? FindInIndex(string name)
+    {
+        var items = _fileIndex.Items;
+        if (items.Length == 0)
+            return null;
+
+        string[] exts = { ".exe", ".bat", ".cmd" };
+        string wanted = NormalizeName(name);
+
+        string? best = null;
+        int bestRank = int.MaxValue;
+        foreach (var item in items)
+        {
+            if (item.IsDirectory)
+                continue;
+
+            int extRank = Array.IndexOf(exts, Path.GetExtension(item.Name).ToLowerInvariant());
+            if (extRank < 0)
+                continue;
+
+            if (!NormalizeName(Path.GetFileNameWithoutExtension(item.Name)).Equals(wanted, StringComparison.Ordinal))
+                continue;
+
+            int rank = extRank * 100_000 + item.Path.Length;
+            if (rank < bestRank)
+            {
+                bestRank = rank;
+                best = item.Path;
+            }
+        }
+
+        return best;
+    }
+
+    private static string NormalizeName(string s) =>
+        new string(s.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
 
     private void OnCommandRemoveClick(object sender, RoutedEventArgs e)
     {

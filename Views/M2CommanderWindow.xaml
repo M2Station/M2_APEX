@@ -414,6 +414,22 @@
                               Margin="0,0,0,12"
                               Foreground="{DynamicResource ThemeTextBrush}" />
 
+                    <!-- Auto detect: fills M2_ST4 / M2_LOG / VS Code program paths from the index -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="AutoDetectButton"
+                                    Content="{b:Loc commander.cmd.autoDetect}"
+                                    MinWidth="140"
+                                    Padding="10,6"
+                                    Click="OnCommandAutoDetectClick" />
+                            <TextBlock x:Name="AutoDetectResult"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </StackPanel>
+                    </Grid>
+
                     <!-- Action buttons -->
                     <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
                         <Button Content="{b:Loc commander.cmd.add}"
