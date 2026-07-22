@@ -46,4 +46,38 @@ public static class StartupService
             // Best effort; ignore registry failures.
         }
     }
+
+    /// <summary>The raw command registered under the Run key (usually a quoted exe path), or null.</summary>
+    public static string? GetRegisteredCommand()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: false);
+            return key?.GetValue(ValueName) as string;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The executable path registered to launch at startup (quotes / args stripped), or null.</summary>
+    public static string? GetRegisteredPath()
+    {
+        var cmd = GetRegisteredCommand()?.Trim();
+        if (string.IsNullOrEmpty(cmd))
+            return null;
+
+        if (cmd[0] == '"')
+        {
+            int end = cmd.IndexOf('"', 1);
+            return end > 1 ? cmd.Substring(1, end - 1) : cmd.Trim('"');
+        }
+
+        int space = cmd.IndexOf(' ');
+        return space > 0 ? cmd.Substring(0, space) : cmd;
+    }
+
+    /// <summary>Removes the startup registration (same as disabling it).</summary>
+    public static void Unregister() => SetEnabled(false);
 }

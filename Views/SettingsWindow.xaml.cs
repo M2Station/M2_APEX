@@ -71,6 +71,7 @@ public partial class SettingsWindow : Window
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
         StartupBox.IsChecked = StartupService.IsEnabled();
         VersionText.Text = Loc.T("settings.version", UpdateService.CurrentVersion);
+        ShowStartupStatus();
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -116,6 +117,39 @@ public partial class SettingsWindow : Window
         _settings.IndexedDrives = SplitLines(DrivesBox.Text);
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
         _ = _fileIndex.BuildAsync();
+    }
+
+    private void OnCheckStartupClick(object sender, RoutedEventArgs e) => ShowStartupStatus();
+
+    private void OnUnregisterStartupClick(object sender, RoutedEventArgs e)
+    {
+        StartupService.Unregister();
+        StartupBox.IsChecked = false;
+        ShowStartupStatus();
+    }
+
+    /// <summary>Shows whether M2_APEX is registered to launch at startup and which exe is registered,
+    /// so a Setup-vs-Portable copy mismatch is obvious.</summary>
+    private void ShowStartupStatus()
+    {
+        var registered = StartupService.GetRegisteredPath();
+        if (string.IsNullOrEmpty(registered))
+        {
+            StartupStatusText.Text = Loc.T("settings.startupNotRegistered");
+            return;
+        }
+
+        string current = Environment.ProcessPath ?? string.Empty;
+        string note;
+        if (!File.Exists(registered))
+            note = Loc.T("settings.startupMissing");
+        else if (!string.IsNullOrEmpty(current)
+                 && string.Equals(Path.GetFullPath(registered), Path.GetFullPath(current), StringComparison.OrdinalIgnoreCase))
+            note = Loc.T("settings.startupThis");
+        else
+            note = Loc.T("settings.startupOther", current);
+
+        StartupStatusText.Text = Loc.T("settings.startupRegistered", registered) + "\n" + note;
     }
 
     private void OnFactoryResetClick(object sender, RoutedEventArgs e)

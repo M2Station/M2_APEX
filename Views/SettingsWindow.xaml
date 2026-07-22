@@ -250,6 +250,12 @@
 
                 <TextBlock Text="{b:Loc settings.startup}" Style="{StaticResource Header}" />
                 <CheckBox x:Name="StartupBox" Content="{b:Loc settings.launchAtStartup}" />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button x:Name="CheckStartupButton" Content="{b:Loc settings.startupCheck}" Padding="12,6" Click="OnCheckStartupClick" />
+                    <Button x:Name="UnregisterStartupButton" Content="{b:Loc settings.startupUnregister}" Padding="12,6" Margin="8,0,0,0" Click="OnUnregisterStartupClick" />
+                </StackPanel>
+                <TextBlock x:Name="StartupStatusText" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Foreground="{DynamicResource ThemeSubtleBrush}" />
 
                 <TextBlock Text="{b:Loc settings.about}" Style="{StaticResource Header}" />
                 <TextBlock x:Name="VersionText"
