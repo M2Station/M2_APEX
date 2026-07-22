@@ -25,6 +25,7 @@
     "index.count": "{0} items indexed",
 
     "tray.tooltip": "M2_APEX — double-tap Ctrl to search",
+    "tray.launchCommander": "Launch M2_Commander",
     "tray.openSearch": "Open search",
     "tray.rebuildIndex": "Rebuild index",
     "tray.settings": "Settings…",
@@ -169,6 +170,7 @@
     "index.count": "已索引 {0} 筆",
 
     "tray.tooltip": "M2_APEX — 雙擊 Ctrl 開始搜尋",
+    "tray.launchCommander": "開啟 M2_Commander",
     "tray.openSearch": "開啟搜尋",
     "tray.rebuildIndex": "重建索引",
     "tray.settings": "設定…",

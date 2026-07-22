@@ -115,6 +115,7 @@ public partial class App : System.Windows.Application
         _tray.BalloonTipClicked += (_, _) => OnUpdateBalloonClicked();
 
         var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add(Loc.T("tray.launchCommander"), null, (_, _) => Dispatcher.BeginInvoke(() => OpenCommander(null)));
         menu.Items.Add(Loc.T("tray.openSearch"), null, (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch()));
         menu.Items.Add(Loc.T("tray.rebuildIndex"), null, (_, _) => _ = _fileIndex.BuildAsync());
         menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => Dispatcher.BeginInvoke(() => OpenSettings()));
@@ -136,13 +137,14 @@ public partial class App : System.Windows.Application
         _tray.Text = Loc.T("tray.tooltip");
 
         var items = _tray.ContextMenuStrip?.Items;
-        if (items is null || items.Count < 5)
+        if (items is null || items.Count < 6)
             return;
 
-        items[0].Text = Loc.T("tray.openSearch");
-        items[1].Text = Loc.T("tray.rebuildIndex");
-        items[2].Text = Loc.T("tray.settings");
-        items[4].Text = Loc.T("tray.exit");
+        items[0].Text = Loc.T("tray.launchCommander");
+        items[1].Text = Loc.T("tray.openSearch");
+        items[2].Text = Loc.T("tray.rebuildIndex");
+        items[3].Text = Loc.T("tray.settings");
+        items[5].Text = Loc.T("tray.exit");
     }
 
     private void StartBackgroundIndexing()
