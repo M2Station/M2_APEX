@@ -36,6 +36,7 @@ public partial class SearchWindow : Window
         PreviewKeyDown += OnPreviewKeyDown;
         ResultsList.PreviewMouseLeftButtonUp += OnResultClicked;
         ResultsList.SelectionChanged += (_, _) => ScrollSelectedIntoView();
+        SizeChanged += (_, _) => { if (IsVisible) PositionWindow(); };
     }
 
     /// <summary>Bottom-bar "Ctrl+`" link: shows a short animated demo of opening M2_Commander.</summary>
@@ -82,15 +83,7 @@ public partial class SearchWindow : Window
         _viewModel.Clear();
         _viewModel.ShowInitial();
 
-        var area = SystemParameters.WorkArea;
-        double topFraction = _settings.SearchBarPosition switch
-        {
-            BarPosition.Center => 0.35,
-            BarPosition.Bottom => 0.55,
-            _ => 0.16,
-        };
-        Left = area.Left + (area.Width - Width) / 2;
-        Top = area.Top + area.Height * topFraction;
+        PositionWindow();
 
         Show();
         Topmost = true;
@@ -102,6 +95,31 @@ public partial class SearchWindow : Window
         QueryBox.Focus();
         Keyboard.Focus(QueryBox);
         QueryBox.SelectAll();
+    }
+
+    /// <summary>
+    /// Places the search bar for the configured position. Top/Center/Bottom are horizontally
+    /// centred at a vertical fraction; Top-left and Bottom-right snap to a screen corner
+    /// (Bottom-right re-anchors as the list grows, via SizeChanged).
+    /// </summary>
+    private void PositionWindow()
+    {
+        var area = SystemParameters.WorkArea;
+        const double margin = 22;
+        double h = ActualHeight > 1 ? ActualHeight : 420;
+        double centered = area.Left + (area.Width - Width) / 2;
+
+        (double left, double top) = _settings.SearchBarPosition switch
+        {
+            BarPosition.TopLeft => (area.Left + margin, area.Top + margin),
+            BarPosition.BottomRight => (area.Right - Width - margin, area.Bottom - h - margin),
+            BarPosition.Center => (centered, area.Top + area.Height * 0.35),
+            BarPosition.Bottom => (centered, area.Top + area.Height * 0.55),
+            _ => (centered, area.Top + area.Height * 0.16),
+        };
+
+        Left = left;
+        Top = top;
     }
 
     /// <summary>

@@ -20,11 +20,17 @@ public partial class QuickSwitchBar : Window
     /// <summary>Raised when a list row is clicked; the argument is the row index.</summary>
     public event Action<int>? ItemInvoked;
 
+    private IntPtr _lastHwnd;
+    private BarPosition _lastPosition;
+
     public QuickSwitchBar()
     {
         InitializeComponent();
         ResultsList.ItemsSource = Results;
         ResultsList.PreviewMouseLeftButtonUp += OnItemClicked;
+
+        // Bottom-right anchors the bottom edge, so re-place it as the list grows / shrinks.
+        SizeChanged += (_, _) => { if (IsVisible && _lastPosition == BarPosition.BottomRight) PositionOver(_lastHwnd, _lastPosition); };
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -41,6 +47,8 @@ public partial class QuickSwitchBar : Window
 
     public void ShowFor(IntPtr explorerHwnd, BarPosition position)
     {
+        _lastHwnd = explorerHwnd;
+        _lastPosition = position;
         PositionOver(explorerHwnd, position);
         if (!IsVisible)
             Show();
@@ -104,6 +112,17 @@ public partial class QuickSwitchBar : Window
 
     private void PositionOver(IntPtr explorerHwnd, BarPosition position)
     {
+        // Top-left / bottom-right snap to a screen corner rather than tracking the Explorer window.
+        if (position is BarPosition.TopLeft or BarPosition.BottomRight)
+        {
+            var work = SystemParameters.WorkArea;
+            const double corner = 22;
+            double barH = ActualHeight > 1 ? ActualHeight : 240;
+            Left = position == BarPosition.TopLeft ? work.Left + corner : work.Right - Width - corner;
+            Top = position == BarPosition.TopLeft ? work.Top + corner : work.Bottom - barH - corner;
+            return;
+        }
+
         if (!NativeMethods.GetWindowRect(explorerHwnd, out var rect))
             return;
 

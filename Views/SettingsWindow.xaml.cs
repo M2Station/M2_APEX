@@ -14,7 +14,7 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
-    private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom") };
+    private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom"), Loc.T("pos.topLeft"), Loc.T("pos.bottomRight") };
     private bool _loadingTheme;
     private bool _loadingLanguage;
 
