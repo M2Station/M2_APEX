@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Listly.Models;
@@ -16,10 +17,17 @@ public sealed class HotkeyService : IDisposable
 {
     private const int VkSpace = 0x20;
     private const uint LlkhfAltDown = 0x20;
+    private const uint LlkhfInjected = 0x10;
+
+    // Process-name prefixes that indicate a KVM / mouse-sharing tool is running on this PC.
+    private static readonly string[] KvmProcessHints =
+        { "synergy", "deskflow", "barrier", "sharemouse", "mousewithoutborders", "inputdirector" };
 
     private readonly AppSettings _settings;
     private NativeMethods.LowLevelKeyboardProc? _proc;
     private IntPtr _hookHandle = IntPtr.Zero;
+    private System.Threading.Timer? _kvmTimer;
+    private volatile bool _kvmPresent;
 
     private bool _ctrlHeld;
     private bool _otherKeyDuringCtrl;
@@ -48,6 +56,11 @@ public sealed class HotkeyService : IDisposable
         _proc = HookCallback;
         var moduleHandle = NativeMethods.GetModuleHandle(null);
         _hookHandle = NativeMethods.SetWindowsHookEx(NativeMethods.WH_KEYBOARD_LL, _proc, moduleHandle, 0);
+
+        // Poll off the hook thread for a running KVM / mouse-sharing tool, so the hook can cheaply
+        // decide whether to trust the "local pointer is hidden" signal.
+        _kvmTimer = new System.Threading.Timer(_ => RefreshKvmPresence(), null,
+            TimeSpan.Zero, TimeSpan.FromSeconds(5));
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -66,6 +79,11 @@ public sealed class HotkeyService : IDisposable
 
     private bool HandleKey(int message, NativeMethods.KBDLLHOOKSTRUCT data)
     {
+        // Skip input that isn't meant for this PC: synthetic keystrokes, or — while a KVM is
+        // running — keys typed after the shared pointer moved to another computer.
+        if (_settings.IgnoreForeignInput && IsForeignInput(data))
+            return false;
+
         bool isDown = message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN;
         bool isUp = message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP;
         int vk = (int)data.vkCode;
@@ -135,12 +153,83 @@ public sealed class HotkeyService : IDisposable
         return false;
     }
 
+    private bool IsForeignInput(NativeMethods.KBDLLHOOKSTRUCT data)
+    {
+        // Synthetic keystrokes: a KVM client injecting the host's input, remote desktop, macros.
+        if ((data.flags & LlkhfInjected) != 0)
+            return true;
+
+        // A KVM (Synergy / Barrier / Deskflow…) is running and the local pointer is hidden — which
+        // is how those tools show the shared pointer has crossed to another PC — so keys are for it.
+        return _kvmPresent && IsPointerHidden();
+    }
+
+    private static bool IsPointerHidden()
+    {
+        var info = new NativeMethods.CURSORINFO { cbSize = Marshal.SizeOf<NativeMethods.CURSORINFO>() };
+        if (!NativeMethods.GetCursorInfo(ref info))
+            return false;
+
+        // flags == 0: hidden via ShowCursor(false). hCursor == 0: a blank/null cursor. Touch
+        // suppression (CURSOR_SUPPRESSED) keeps a real hCursor, so it is not mistaken for hidden.
+        return info.flags == 0 || info.hCursor == IntPtr.Zero;
+    }
+
+    private void RefreshKvmPresence()
+    {
+        if (!_settings.IgnoreForeignInput)
+        {
+            _kvmPresent = false;
+            return;
+        }
+
+        try
+        {
+            bool present = false;
+            foreach (var process in Process.GetProcesses())
+            {
+                try
+                {
+                    string name = process.ProcessName;
+                    foreach (var hint in KvmProcessHints)
+                    {
+                        if (name.StartsWith(hint, StringComparison.OrdinalIgnoreCase))
+                        {
+                            present = true;
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Process exited between enumeration and read; ignore.
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+
+                if (present)
+                    break;
+            }
+
+            _kvmPresent = present;
+        }
+        catch
+        {
+            // Keep the previous value if the process scan fails.
+        }
+    }
+
     private void RaiseTriggered() => Triggered?.Invoke();
 
     private static bool IsKeyDown(int vk) => (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
 
     public void Dispose()
     {
+        _kvmTimer?.Dispose();
+        _kvmTimer = null;
+
         if (_hookHandle != IntPtr.Zero)
         {
             NativeMethods.UnhookWindowsHookEx(_hookHandle);

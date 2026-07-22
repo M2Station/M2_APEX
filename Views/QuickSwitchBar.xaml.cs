@@ -38,9 +38,9 @@ public partial class QuickSwitchBar : Window
             exStyle | NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE);
     }
 
-    public void ShowFor(IntPtr explorerHwnd)
+    public void ShowFor(IntPtr explorerHwnd, BarPosition position)
     {
-        PositionOver(explorerHwnd);
+        PositionOver(explorerHwnd, position);
         if (!IsVisible)
             Show();
         Topmost = true;
@@ -101,7 +101,7 @@ public partial class QuickSwitchBar : Window
             ItemInvoked?.Invoke(index);
     }
 
-    private void PositionOver(IntPtr explorerHwnd)
+    private void PositionOver(IntPtr explorerHwnd, BarPosition position)
     {
         if (!NativeMethods.GetWindowRect(explorerHwnd, out var rect))
             return;
@@ -112,9 +112,17 @@ public partial class QuickSwitchBar : Window
 
         double widthPx = rect.Right - rect.Left;
         double centerXpx = rect.Left + widthPx / 2.0;
+        double topDip = rect.Top / scale;
+        double heightDip = (rect.Bottom - rect.Top) / scale;
 
-        // Anchor near the top of the Explorer window (below its toolbar) and grow downward.
+        // Horizontal is always centred; the vertical anchor follows the chosen position.
+        // The bar grows downward, so each option anchors its top edge.
         Left = centerXpx / scale - Width / 2.0;
-        Top = rect.Top / scale + 76;
+        Top = position switch
+        {
+            BarPosition.Center => topDip + heightDip * 0.30,
+            BarPosition.Bottom => topDip + heightDip * 0.55,
+            _ => topDip + 76,
+        };
     }
 }

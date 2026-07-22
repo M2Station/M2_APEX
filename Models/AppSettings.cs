@@ -1,7 +1,17 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Listly.Models;
+
+/// <summary>Vertical anchor for a pop-up bar (horizontal is always centred).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum BarPosition
+{
+    Top,
+    Center,
+    Bottom
+}
 
 /// <summary>User-configurable settings, persisted as JSON in %AppData%\Listly.</summary>
 public sealed class AppSettings
@@ -12,6 +22,13 @@ public sealed class AppSettings
 
     /// <summary>Type-to-jump inside Windows File Explorer (Listary's Quick Switch).</summary>
     public bool EnableQuickSwitch { get; set; } = true;
+
+    /// <summary>
+    /// Ignore keystrokes not meant for this PC: injected/synthetic input, and — when a KVM tool
+    /// (Synergy / Barrier / Deskflow) is running — keys typed while the shared pointer has moved
+    /// to another computer. Stops M2_APEX reacting to input meant for the other machine.
+    /// </summary>
+    public bool IgnoreForeignInput { get; set; } = true;
 
     /// <summary>Max milliseconds between the two Ctrl taps to trigger the search bar.</summary>
     public int DoubleCtrlThresholdMs { get; set; } = 400;
@@ -43,10 +60,16 @@ public sealed class AppSettings
     /// <c>Pictures</c>, <c>Music</c>, <c>Videos</c>, <c>Home</c>). Results living under a
     /// listed location float toward the top when the search bar is opened.
     /// </summary>
-    public List<string> PriorityLocations { get; set; } = new();
+    public List<string> PriorityLocations { get; set; } = new() { "Desktop" };
 
     /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
     public string Theme { get; set; } = "low_key";
+
+    /// <summary>Where the main search bar (double-Ctrl / Alt+Space) appears on screen.</summary>
+    public BarPosition SearchBarPosition { get; set; } = BarPosition.Top;
+
+    /// <summary>Where the Quick Switch bar appears over the File Explorer window.</summary>
+    public BarPosition QuickSwitchPosition { get; set; } = BarPosition.Top;
 
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");

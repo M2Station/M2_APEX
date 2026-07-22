@@ -1,0 +1,27 @@
+name: Build
+
+# CI: verify every push / pull request compiles in Release.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (Release)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore M2_APEX.csproj
+
+      - name: Build
+        run: dotnet build M2_APEX.csproj -c Release --no-restore

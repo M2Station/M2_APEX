@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 using Listly.Models;
 using Listly.Services;
@@ -12,6 +14,7 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
+    private static readonly string[] PositionLabels = { "Top", "Center", "Bottom" };
     private bool _loadingTheme;
 
     public SettingsWindow(AppSettings settings, FileIndexService fileIndex)
@@ -29,6 +32,7 @@ public partial class SettingsWindow : Window
         Closed += (_, _) => ThemeManager.Apply(_settings.Theme);
 
         IndexStatus.Text = $"{_fileIndex.Count:N0} items indexed";
+        CreditLogo.Data = Assets.M2Logo.Geometry;
     }
 
     private void LoadFromSettings()
@@ -41,7 +45,12 @@ public partial class SettingsWindow : Window
         DoubleCtrlBox.IsChecked = _settings.EnableDoubleCtrl;
         AltSpaceBox.IsChecked = _settings.EnableAltSpace;
         QuickSwitchBox.IsChecked = _settings.EnableQuickSwitch;
+        ForeignInputBox.IsChecked = _settings.IgnoreForeignInput;
         ThresholdBox.Text = _settings.DoubleCtrlThresholdMs.ToString();
+        SearchPosBox.ItemsSource = PositionLabels;
+        SearchPosBox.SelectedIndex = (int)_settings.SearchBarPosition;
+        QuickPosBox.ItemsSource = PositionLabels;
+        QuickPosBox.SelectedIndex = (int)_settings.QuickSwitchPosition;
         FilesFirstBox.IsChecked = _settings.ShowFilesFirst;
         MaxResultsBox.Text = _settings.MaxResults.ToString();
         WebUrlBox.Text = _settings.WebSearchUrl;
@@ -50,6 +59,7 @@ public partial class SettingsWindow : Window
         DrivesBox.Text = string.Join(Environment.NewLine, _settings.IndexedDrives);
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
         StartupBox.IsChecked = StartupService.IsEnabled();
+        VersionText.Text = $"M2_APEX  v{UpdateService.CurrentVersion}";
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -57,8 +67,11 @@ public partial class SettingsWindow : Window
         _settings.EnableDoubleCtrl = DoubleCtrlBox.IsChecked == true;
         _settings.EnableAltSpace = AltSpaceBox.IsChecked == true;
         _settings.EnableQuickSwitch = QuickSwitchBox.IsChecked == true;
+        _settings.IgnoreForeignInput = ForeignInputBox.IsChecked == true;
         _settings.ShowFilesFirst = FilesFirstBox.IsChecked == true;
         _settings.IndexHiddenFiles = HiddenBox.IsChecked == true;
+        _settings.SearchBarPosition = (BarPosition)Math.Max(0, SearchPosBox.SelectedIndex);
+        _settings.QuickSwitchPosition = (BarPosition)Math.Max(0, QuickPosBox.SelectedIndex);
 
         if (int.TryParse(ThresholdBox.Text, out int threshold))
             _settings.DoubleCtrlThresholdMs = Math.Clamp(threshold, 150, 1000);
@@ -92,6 +105,49 @@ public partial class SettingsWindow : Window
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private void OnCreditClick(object sender, MouseButtonEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://github.com/oahsiao") { UseShellExecute = true });
+        }
+        catch
+        {
+            // Best effort.
+        }
+    }
+
+    private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
+    {
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatus.Text = "Checking\u2026";
+        try
+        {
+            var info = await UpdateService.CheckForUpdateAsync();
+            if (info is null)
+            {
+                UpdateStatus.Text = "Couldn't check for updates. Try again later.";
+            }
+            else if (info.HasUpdate)
+            {
+                UpdateStatus.Text = $"New version {info.LatestVersion} available.";
+                var choice = System.Windows.MessageBox.Show(this,
+                    $"A new version {info.LatestVersion} is available.\nYou have {info.CurrentVersion}.\n\nOpen the download page now?",
+                    "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (choice == MessageBoxResult.Yes)
+                    UpdateService.OpenInBrowser(info.DownloadUrl ?? info.ReleaseUrl);
+            }
+            else
+            {
+                UpdateStatus.Text = $"You're on the latest version ({info.CurrentVersion}).";
+            }
+        }
+        finally
+        {
+            CheckUpdateButton.IsEnabled = true;
+        }
+    }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {

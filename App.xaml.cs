@@ -28,6 +28,7 @@ public partial class App : System.Windows.Application
     private SettingsWindow? _settingsWindow;
     private Forms.NotifyIcon _tray = null!;
     private System.Windows.Media.ImageSource? _windowIcon;
+    private string? _pendingUpdateUrl;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -60,7 +61,7 @@ public partial class App : System.Windows.Application
         _engine = new SearchEngine(_fileIndex, _appIndex, _commands, _usage, _settings);
         _launch = new LaunchService(_usage);
         _viewModel = new SearchViewModel(_engine);
-        _window = new SearchWindow(_viewModel, _launch);
+        _window = new SearchWindow(_viewModel, _launch, _settings);
         _window.Icon = _windowIcon;
 
         _quickSwitchBar = new QuickSwitchBar();
@@ -78,6 +79,7 @@ public partial class App : System.Windows.Application
 
         SetupTray();
         StartBackgroundIndexing();
+        StartUpdateCheck();
     }
 
     private void SetupTray()
@@ -90,6 +92,7 @@ public partial class App : System.Windows.Application
         };
 
         _tray.DoubleClick += (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch());
+        _tray.BalloonTipClicked += (_, _) => OnUpdateBalloonClicked();
 
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open search", null, (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch()));
@@ -109,6 +112,31 @@ public partial class App : System.Windows.Application
         _fileIndex.LoadCache();
         if (_fileIndex.Count == 0)
             _ = _fileIndex.BuildAsync();
+    }
+
+    private void StartUpdateCheck()
+    {
+        // One quiet check on launch; only surfaces a tray balloon if a newer release exists.
+        _ = Task.Run(async () =>
+        {
+            var info = await UpdateService.CheckForUpdateAsync();
+            if (info is not { HasUpdate: true })
+                return;
+
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                _pendingUpdateUrl = info.DownloadUrl ?? info.ReleaseUrl;
+                _tray?.ShowBalloonTip(6000, "M2_APEX update available",
+                    $"Version {info.LatestVersion} is available (you have {info.CurrentVersion}). Click to download.",
+                    Forms.ToolTipIcon.Info);
+            });
+        });
+    }
+
+    private void OnUpdateBalloonClicked()
+    {
+        if (!string.IsNullOrEmpty(_pendingUpdateUrl))
+            UpdateService.OpenInBrowser(_pendingUpdateUrl);
     }
 
     private void OpenSettings()

@@ -67,6 +67,11 @@ public static class M2Logo
     /// </summary>
     public static RenderTargetBitmap RenderBitmap(int size, Color? foreground = null, Color? background = null)
     {
+        // Render large, then downscale with high-quality filtering, so the thin ring
+        // strokes stay smooth even at tiny tray sizes (16-24 px).
+        const int ss = 4;
+        int hi = size * ss;
+
         var fill = foreground ?? Foreground;
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
@@ -74,34 +79,66 @@ public static class M2Logo
             double pad;
             if (background is Color badge)
             {
-                double radius = size * 0.22;
-                var border = new Pen(new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)), Math.Max(1.0, size / 32.0));
-                dc.DrawRoundedRectangle(new SolidColorBrush(badge), border,
-                    new Rect(0.5, 0.5, size - 1, size - 1), radius, radius);
-                pad = size * 0.2;
+                double radius = hi * 0.23;
+
+                // A subtle vertical gradient gives the flat badge some depth.
+                var backdrop = new LinearGradientBrush(Lighten(badge, 0.14), Darken(badge, 0.12), 90);
+                dc.DrawRoundedRectangle(backdrop, null, new Rect(0, 0, hi, hi), radius, radius);
+
+                // A faint inner rim-light reads as a soft edge without a hard 1px border.
+                double inset = Math.Max(1.0, hi / 64.0);
+                var rim = new Pen(new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)), inset);
+                dc.DrawRoundedRectangle(null, rim,
+                    new Rect(inset, inset, hi - 2 * inset, hi - 2 * inset),
+                    radius - inset, radius - inset);
+
+                pad = hi * 0.18;
             }
             else
             {
-                pad = size * 0.06;
+                pad = hi * 0.06;
             }
 
             var geometry = Geometry.Clone();
             var bounds = geometry.Bounds;
-            double scale = Math.Min((size - 2 * pad) / bounds.Width, (size - 2 * pad) / bounds.Height);
+            double scale = Math.Min((hi - 2 * pad) / bounds.Width, (hi - 2 * pad) / bounds.Height);
 
             var transform = new TransformGroup();
             transform.Children.Add(new ScaleTransform(scale, scale));
             transform.Children.Add(new TranslateTransform(
-                (size - bounds.Width * scale) / 2 - bounds.X * scale,
-                (size - bounds.Height * scale) / 2 - bounds.Y * scale));
+                (hi - bounds.Width * scale) / 2 - bounds.X * scale,
+                (hi - bounds.Height * scale) / 2 - bounds.Y * scale));
             geometry.Transform = transform;
 
             dc.DrawGeometry(new SolidColorBrush(fill), null, geometry);
         }
 
+        var supersampled = new RenderTargetBitmap(hi, hi, 96, 96, PixelFormats.Pbgra32);
+        supersampled.Render(visual);
+
+        var downVisual = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(downVisual, BitmapScalingMode.HighQuality);
+        using (var dc = downVisual.RenderOpen())
+        {
+            dc.DrawImage(supersampled, new Rect(0, 0, size, size));
+        }
+
         var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
+        bitmap.Render(downVisual);
         bitmap.Freeze();
         return bitmap;
+    }
+
+    private static Color Lighten(Color c, double amount) => Blend(c, Colors.White, amount);
+
+    private static Color Darken(Color c, double amount) => Blend(c, Colors.Black, amount);
+
+    private static Color Blend(Color a, Color b, double t)
+    {
+        t = Math.Clamp(t, 0, 1);
+        return Color.FromRgb(
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t));
     }
 }

@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 
+using Listly.Models;
 using Listly.Native;
 using Listly.Services;
 using Listly.ViewModels;
@@ -16,11 +17,13 @@ public partial class SearchWindow : Window
 {
     private readonly SearchViewModel _viewModel;
     private readonly LaunchService _launch;
+    private readonly AppSettings _settings;
 
-    public SearchWindow(SearchViewModel viewModel, LaunchService launch)
+    public SearchWindow(SearchViewModel viewModel, LaunchService launch, AppSettings settings)
     {
         _viewModel = viewModel;
         _launch = launch;
+        _settings = settings;
 
         InitializeComponent();
         DataContext = _viewModel;
@@ -55,8 +58,14 @@ public partial class SearchWindow : Window
         _viewModel.ShowInitial();
 
         var area = SystemParameters.WorkArea;
+        double topFraction = _settings.SearchBarPosition switch
+        {
+            BarPosition.Center => 0.35,
+            BarPosition.Bottom => 0.55,
+            _ => 0.16,
+        };
         Left = area.Left + (area.Width - Width) / 2;
-        Top = area.Top + area.Height * 0.16;
+        Top = area.Top + area.Height * topFraction;
 
         Show();
         Topmost = true;

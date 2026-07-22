@@ -184,9 +184,20 @@
                 <CheckBox x:Name="DoubleCtrlBox" Content="Show search bar on double-tap Ctrl" />
                 <CheckBox x:Name="AltSpaceBox" Content="Show search bar on Alt+Space" />
                 <CheckBox x:Name="QuickSwitchBox" Content="Quick Switch: type in File Explorer to jump to a file" />
+                <CheckBox x:Name="ForeignInputBox" Content="Ignore keys sent from another PC (Synergy / KVM / remote)" />
                 <StackPanel Orientation="Horizontal" Margin="0,6">
                     <TextBlock Text="Double-Ctrl max gap (ms):" VerticalAlignment="Center" />
                     <TextBox x:Name="ThresholdBox" Width="70" Margin="10,0,0,0" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <TextBlock Text="Search bar position:" VerticalAlignment="Center" Width="180" />
+                    <ComboBox x:Name="SearchPosBox" Width="150" HorizontalAlignment="Left"
+                              Style="{StaticResource ThemeCombo}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <TextBlock Text="Quick Switch position:" VerticalAlignment="Center" Width="180" />
+                    <ComboBox x:Name="QuickPosBox" Width="150" HorizontalAlignment="Left"
+                              Style="{StaticResource ThemeCombo}" />
                 </StackPanel>
 
                 <TextBlock Text="Results" Style="{StaticResource Header}" />
@@ -221,7 +232,31 @@
                 </StackPanel>
 
                 <TextBlock Text="Startup" Style="{StaticResource Header}" />
-                <CheckBox x:Name="StartupBox" Content="Launch Listly when Windows starts" />
+                <CheckBox x:Name="StartupBox" Content="Launch M2_APEX when Windows starts" />
+
+                <TextBlock Text="About" Style="{StaticResource Header}" />
+                <TextBlock x:Name="VersionText"
+                           Foreground="{DynamicResource ThemeSubtleBrush}" Margin="0,2,0,8" />
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="CheckUpdateButton" Content="Check for updates"
+                            Padding="12,6" Click="OnCheckUpdateClick" />
+                    <TextBlock x:Name="UpdateStatus" VerticalAlignment="Center" Margin="14,0,0,0"
+                               Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel x:Name="CreditPanel" Orientation="Horizontal" Cursor="Hand"
+                            Margin="0,18,0,4" HorizontalAlignment="Left" Background="Transparent"
+                            ToolTip="https://github.com/oahsiao"
+                            MouseLeftButtonUp="OnCreditClick">
+                    <Path x:Name="CreditLogo" Width="15" Height="15" Stretch="Uniform"
+                          VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
+                    <TextBlock Text="Powered by" VerticalAlignment="Center" Margin="8,0,5,0"
+                               Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    <TextBlock Text="OA Hsiao" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThemeAccentBrush}" />
+                    <TextBlock Text="&#x2197;" VerticalAlignment="Center" Margin="5,0,0,0"
+                               FontSize="10" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

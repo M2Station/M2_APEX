@@ -225,19 +225,19 @@ public static class ExplorerAccess
     {
         try
         {
-            AutomationElement? element = null;
-
-            if (list.TryGetCurrentPattern(ItemContainerPattern.Pattern, out var containerObj)
-                && containerObj is ItemContainerPattern container)
-            {
-                element = container.FindItemByProperty(null, AutomationElement.NameProperty, name);
-            }
-
-            element ??= list.FindFirst(TreeScope.Children,
-                new PropertyCondition(AutomationElement.NameProperty, name));
-
+            var element = FindItem(list, name);
             if (element is null)
                 return;
+
+            // If the item is virtualized (scrolled out of view), realize it first: this brings
+            // it on-screen and promotes the placeholder to a fully interactive element, so
+            // Explorer actually scrolls to and selects it even when it started off-screen.
+            if (element.TryGetCurrentPattern(VirtualizedItemPattern.Pattern, out var virtObj)
+                && virtObj is VirtualizedItemPattern virtualItem)
+            {
+                try { virtualItem.Realize(); }
+                catch { /* already realized, or realization not supported */ }
+            }
 
             if (element.TryGetCurrentPattern(ScrollItemPattern.Pattern, out var scrollObj)
                 && scrollObj is ScrollItemPattern scroll)
@@ -255,5 +255,37 @@ public static class ExplorerAccess
         {
             // Best effort; selection is only a visual aid.
         }
+    }
+
+    // Locate a list item by display name, resilient to virtualization and to Windows 11's
+    // habit of splitting a mixed folder into "Folders" and "Files" groups — which pushes the
+    // items down a level, so a direct-children search alone misses them.
+    private static AutomationElement? FindItem(AutomationElement list, string name)
+    {
+        // ItemContainerPattern realizes virtualized items and spans groups.
+        if (list.TryGetCurrentPattern(ItemContainerPattern.Pattern, out var containerObj)
+            && containerObj is ItemContainerPattern container)
+        {
+            try
+            {
+                var found = container.FindItemByProperty(null, AutomationElement.NameProperty, name);
+                if (found is not null)
+                    return found;
+            }
+            catch
+            {
+                // Some shell views throw here; fall back to a tree search.
+            }
+        }
+
+        var byName = new PropertyCondition(AutomationElement.NameProperty, name);
+
+        // Flat, ungrouped list: items are direct children.
+        var direct = list.FindFirst(TreeScope.Children, byName);
+        if (direct is not null)
+            return direct;
+
+        // Grouped list (folders + files): items sit under group headers, so search deeper.
+        return list.FindFirst(TreeScope.Descendants, byName);
     }
 }

@@ -157,7 +157,7 @@ public sealed class QuickSwitchService
             _matches = new List<ExplorerItem>();
             _matchIndex = 0;
 
-            _bar.ShowFor(hwnd);
+            _bar.ShowFor(hwnd, _settings.QuickSwitchPosition);
             Rematch();
             CaptureListAsync(hwnd);
 
