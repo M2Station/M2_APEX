@@ -11,7 +11,7 @@
     <ApplicationIcon>Assets\M2Logo.ico</ApplicationIcon>
     <AssemblyName>M2_APEX</AssemblyName>
     <RootNamespace>Listly</RootNamespace>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <RepositoryUrl>https://github.com/M2Station/M2_APEX</RepositoryUrl>
     <Authors>M2Station</Authors>
     <Product>M2_APEX</Product>
