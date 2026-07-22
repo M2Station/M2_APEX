@@ -879,6 +879,7 @@ public partial class M2CommanderWindow : Window
 
         // The filter belongs to the pane being left; clear it before switching.
         _active.List.Items.Filter = null;
+        UpdateMatchHighlight(_active, string.Empty);
         _filterText = string.Empty;
 
         _active = pane;
@@ -1479,22 +1480,32 @@ public partial class M2CommanderWindow : Window
     private void ApplyFilter()
     {
         var list = _active.List;
+        string query = _filterText.ToLowerInvariant();
         if (_filterText.Length == 0)
         {
             list.Items.Filter = null;
         }
         else
         {
-            string query = _filterText.ToLowerInvariant();
             list.Items.Filter = o =>
                 o is CommanderEntry entry
                 && (entry.IsParent || FuzzyMatcher.Score(query, entry.Name) > FuzzyMatcher.NoMatch);
         }
 
+        UpdateMatchHighlight(_active, query);
         SelectBestFilterMatch();
         UpdateStatus();
         if (IsLoaded)
             FocusSelected(_active);
+    }
+
+    /// <summary>Sets each entry's matched-character indices for the current filter (empty query = clears them).</summary>
+    private static void UpdateMatchHighlight(Pane pane, string queryLower)
+    {
+        foreach (var entry in pane.Entries)
+            entry.MatchedIndices = queryLower.Length == 0 || entry.IsParent
+                ? null
+                : FuzzyMatcher.GetMatchedIndices(queryLower, entry.Name);
     }
 
     private void ClearFilter()
@@ -1505,6 +1516,7 @@ public partial class M2CommanderWindow : Window
         // Unfiltering keeps the currently selected item selected (WPF preserves SelectedItem).
         _filterText = string.Empty;
         _active.List.Items.Filter = null;
+        UpdateMatchHighlight(_active, string.Empty);
         UpdateStatus();
         FocusSelected(_active);
     }
@@ -1650,7 +1662,7 @@ public partial class M2CommanderWindow : Window
     private sealed record HelpRow(string Keys, string Desc);
 
     /// <summary>One row in a pane's listing.</summary>
-    public sealed class CommanderEntry
+    public sealed class CommanderEntry : System.ComponentModel.INotifyPropertyChanged
     {
         public required string Name { get; init; }
         public required string Path { get; init; }
@@ -1659,6 +1671,21 @@ public partial class M2CommanderWindow : Window
         public string Glyph { get; init; } = IconGlyph.GenericFile;
         public string SizeText { get; init; } = string.Empty;
         public string DateText { get; init; } = string.Empty;
+
+        private IReadOnlyList<int>? _matchedIndices;
+
+        /// <summary>Indices of the characters in <see cref="Name"/> matched by the live filter (null = none).</summary>
+        public IReadOnlyList<int>? MatchedIndices
+        {
+            get => _matchedIndices;
+            set
+            {
+                _matchedIndices = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(MatchedIndices)));
+            }
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
     }
 
     private sealed class Pane
