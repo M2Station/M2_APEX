@@ -304,6 +304,7 @@
                     </Grid>
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
                         <ItemsControl x:Name="CommandEditorList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -360,6 +361,50 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Quick links (shown on the drives / This-PC view) -->
+                        <TextBlock Text="{b:Loc commander.links.section}"
+                                   FontSize="13" FontWeight="SemiBold" Margin="0,16,0,6"
+                                   Foreground="{DynamicResource ThemeTextBrush}" />
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="98" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{b:Loc commander.links.name}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                            <TextBlock Grid.Column="1" Text="{b:Loc commander.links.target}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </Grid>
+                        <ItemsControl x:Name="LinkEditorList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="30" />
+                                            <ColumnDefinition Width="30" />
+                                            <ColumnDefinition Width="30" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" Padding="6,4" VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource ThemeInputBrush}" Foreground="{DynamicResource ThemeTextBrush}"
+                                                 CaretBrush="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="1" />
+                                        <TextBox Grid.Column="1" Margin="6,0,0,0"
+                                                 Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" Padding="6,4" VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource ThemeInputBrush}" Foreground="{DynamicResource ThemeTextBrush}"
+                                                 CaretBrush="{DynamicResource ThemeAccentBrush}" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="1" />
+                                        <Button Grid.Column="2" Margin="4,0,0,0" Content="&#x2191;" Tag="{Binding}" ToolTip="{b:Loc commander.links.up}" Click="OnLinkUpClick" />
+                                        <Button Grid.Column="3" Margin="4,0,0,0" Content="&#x2193;" Tag="{Binding}" ToolTip="{b:Loc commander.links.down}" Click="OnLinkDownClick" />
+                                        <Button Grid.Column="4" Margin="4,0,0,0" Content="&#x2715;" Tag="{Binding}" Click="OnLinkRemoveClick" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="{b:Loc commander.links.add}" HorizontalAlignment="Left" MinWidth="120" Padding="10,6" Margin="0,8,0,0" Click="OnLinkAddClick" />
+                        </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
             </Border>

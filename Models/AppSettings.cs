@@ -102,6 +102,9 @@ public sealed class AppSettings
     public double? CommanderWindowWidth { get; set; }
     public double? CommanderWindowHeight { get; set; }
 
+    /// <summary>User-defined quick links shown on the M2_Commander drives ("This PC") view.</summary>
+    public List<CommanderLink> CommanderLinks { get; set; } = CommanderLink.DefaultSeed();
+
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
 
@@ -191,4 +194,38 @@ public sealed class CommanderCommand : INotifyPropertyChanged
             Path = t.DetectPath() ?? string.Empty,
             Arguments = string.IsNullOrEmpty(t.Arguments) ? "\"{path}\"" : t.Arguments
         }).ToList();
+}
+
+/// <summary>
+/// A user-defined quick link shown on M2_Commander's drives ("This PC") view. <see cref="Target"/>
+/// may be a folder / UNC path (browsed in-pane or opened in Explorer) or a URL (opened in the browser).
+/// </summary>
+public sealed class CommanderLink : INotifyPropertyChanged
+{
+    private string _name = string.Empty;
+    private string _target = string.Empty;
+
+    public string Name
+    {
+        get => _name;
+        set { if (_name != value) { _name = value; OnChanged(nameof(Name)); } }
+    }
+
+    /// <summary>A folder / UNC path or a URL. URLs (http://, https://, …) open in the browser.</summary>
+    public string Target
+    {
+        get => _target;
+        set { if (_target != value) { _target = value; OnChanged(nameof(Target)); } }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnChanged(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    /// <summary>The default quick links created on first run.</summary>
+    public static List<CommanderLink> DefaultSeed() => new()
+    {
+        new CommanderLink { Name = "M2_STATION", Target = @"\\192.168.100.168" },
+    };
 }
