@@ -66,12 +66,13 @@ public partial class M2CommanderWindow : Window
         ("Del", "commander.k.delete"),
         ("Shift+Del", "commander.k.fastDelete"),
         ("A–Z", "commander.k.filter"),
+        ("Esc", "commander.k.clearFilter"),
         ("Ctrl+U", "commander.k.swap"),
         ("Ctrl+R", "commander.k.refresh"),
         ("F11", "commander.k.commands"),
         ("Ctrl+`", "commander.k.openApp"),
         ("F12", "commander.k.help"),
-        ("F10 / Esc", "commander.k.quit"),
+        ("F10", "commander.k.quit"),
     };
 
     public M2CommanderWindow(AppSettings settings, FileIndexService fileIndex)
@@ -1434,11 +1435,13 @@ public partial class M2CommanderWindow : Window
                 e.Handled = true;
                 break;
             case Key.Escape:
+                // Esc clears an active type-to-filter but no longer closes the window
+                // (use F10 or the title-bar close button to quit M2_Commander).
                 if (_filterText.Length > 0)
+                {
                     ClearFilter();
-                else
-                    Close();
-                e.Handled = true;
+                    e.Handled = true;
+                }
                 break;
             case Key.U when mods == ModifierKeys.Control:
                 SwapPanes();

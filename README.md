@@ -73,6 +73,7 @@ Open with `Ctrl` + `` ` `` (backtick) from any search surface. Fully keyboard-dr
 | `Alt+[` | Back (history) |
 | `Alt+]` | Forward (history) |
 | Type `A`–`Z` | Filter the list |
+| `Esc` | Clear the filter |
 | `Ctrl+C` / `Ctrl+V` | Mark for copy / paste into the active pane |
 | `F2` | Rename |
 | `Del` | Delete permanently (bypasses Recycle Bin) |
@@ -82,7 +83,7 @@ Open with `Ctrl` + `` ` `` (backtick) from any search surface. Fully keyboard-dr
 | `F1` | Actions menu (copy / move / delete / new…) |
 | `F11` | Custom command settings |
 | `F12` | All keyboard shortcuts |
-| `F10` / `Esc` | Quit |
+| `F10` | Quit |
 
 > Click **+** at the right to open up to **4 panes**; **×** on a pane header closes it (minimum 2). The window
 > remembers its size, position, pane count and each pane's folder, and scales to the screen. Move and swap apply
