@@ -48,7 +48,8 @@
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource ThemeAccentBrush}" />
                     <TextBlock x:Name="NameText"
-                               Text="{Binding Name}"
+                               b:Highlight.MatchText="{Binding Name}"
+                               b:Highlight.MatchIndices="{Binding MatchedIndices}"
                                FontSize="13"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"

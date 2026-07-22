@@ -27,20 +27,51 @@ public static class Highlight
 
     private static void OnResultChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not TextBlock textBlock)
-            return;
+        if (d is TextBlock textBlock)
+            RenderHighlighted(textBlock, (e.NewValue as SearchResult)?.Title, (e.NewValue as SearchResult)?.MatchedIndices);
+    }
 
+    // --- Generic text + matched-indices highlighting (e.g. M2_Commander's live filter) ---------
+
+    public static readonly DependencyProperty MatchTextProperty =
+        DependencyProperty.RegisterAttached(
+            "MatchText", typeof(string), typeof(Highlight),
+            new PropertyMetadata(null, OnMatchChanged));
+
+    public static void SetMatchText(DependencyObject element, string? value) =>
+        element.SetValue(MatchTextProperty, value);
+
+    public static string? GetMatchText(DependencyObject element) =>
+        (string?)element.GetValue(MatchTextProperty);
+
+    public static readonly DependencyProperty MatchIndicesProperty =
+        DependencyProperty.RegisterAttached(
+            "MatchIndices", typeof(IReadOnlyList<int>), typeof(Highlight),
+            new PropertyMetadata(null, OnMatchChanged));
+
+    public static void SetMatchIndices(DependencyObject element, IReadOnlyList<int>? value) =>
+        element.SetValue(MatchIndicesProperty, value);
+
+    public static IReadOnlyList<int>? GetMatchIndices(DependencyObject element) =>
+        (IReadOnlyList<int>?)element.GetValue(MatchIndicesProperty);
+
+    private static void OnMatchChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TextBlock textBlock)
+            RenderHighlighted(textBlock, GetMatchText(textBlock), GetMatchIndices(textBlock));
+    }
+
+    /// <summary>Renders <paramref name="text"/> into <paramref name="textBlock"/>, accent-bolding matched chars.</summary>
+    private static void RenderHighlighted(TextBlock textBlock, string? text, IReadOnlyList<int>? matched)
+    {
         textBlock.Inlines.Clear();
 
-        if (e.NewValue is not SearchResult result)
+        if (string.IsNullOrEmpty(text))
             return;
-
-        var title = result.Title;
-        var matched = result.MatchedIndices;
 
         if (matched is null || matched.Count == 0)
         {
-            textBlock.Inlines.Add(new Run(title));
+            textBlock.Inlines.Add(new Run(text));
             return;
         }
 
@@ -64,14 +95,14 @@ public static class Highlight
             buffer.Clear();
         }
 
-        for (int i = 0; i < title.Length; i++)
+        for (int i = 0; i < text.Length; i++)
         {
             bool isMatch = matchedSet.Contains(i);
             if (i > 0 && isMatch != bufferMatched)
                 Flush();
 
             bufferMatched = isMatch;
-            buffer.Append(title[i]);
+            buffer.Append(text[i]);
         }
 
         Flush();
