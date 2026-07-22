@@ -121,7 +121,10 @@ public sealed class AppSettings
                 var json = File.ReadAllText(ConfigPath);
                 var loaded = JsonSerializer.Deserialize<AppSettings>(json);
                 if (loaded is not null)
+                {
+                    loaded.UpgradeLegacyCommands();
                     return loaded;
+                }
             }
         }
         catch
@@ -130,6 +133,26 @@ public sealed class AppSettings
         }
 
         return new AppSettings();
+    }
+
+    /// <summary>
+    /// One-time in-memory upgrade of seeded commands still on a superseded default. Currently a
+    /// "Beyond Compare" entry left on the single-path <c>{path}</c> default is switched to compare
+    /// the two panes (<c>{left}</c> vs <c>{right}</c>). User-customised arguments are left untouched.
+    /// </summary>
+    private void UpgradeLegacyCommands()
+    {
+        if (CommanderCommands is null)
+            return;
+
+        foreach (var cmd in CommanderCommands)
+        {
+            if (string.Equals(cmd.Label?.Trim(), "Beyond Compare", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(cmd.Arguments?.Trim(), "\"{path}\"", StringComparison.Ordinal))
+            {
+                cmd.Arguments = "\"{left}\" \"{right}\"";
+            }
+        }
     }
 
     public void Save()

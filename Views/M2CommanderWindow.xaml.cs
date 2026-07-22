@@ -1278,7 +1278,10 @@ public partial class M2CommanderWindow : Window
 
         var sel = ActiveSelected();
         string target = sel is { IsParent: false } ? sel.Path : _active.Dir;
-        string args = (cmd.Arguments ?? string.Empty).Replace("{path}", target);
+        string args = (cmd.Arguments ?? string.Empty)
+            .Replace("{path}", target)
+            .Replace("{left}", PaneDir(_panes[0]))
+            .Replace("{right}", PaneDir(_panes[_panes.Count > 1 ? 1 : 0]));
 
         try
         {
@@ -1288,6 +1291,18 @@ public partial class M2CommanderWindow : Window
         {
             Warn(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// The folder a pane is showing, used by the {left}/{right} command tokens (e.g. Beyond Compare
+    /// comparing the two panes). On the "This PC" drives view it resolves to the selected drive
+    /// (or empty), since there is no real folder there.
+    /// </summary>
+    private string PaneDir(Pane pane)
+    {
+        if (pane.Dir != DrivesView)
+            return pane.Dir;
+        return pane.List.SelectedItem is CommanderEntry { IsParent: false } drive ? drive.Path : string.Empty;
     }
 
     private void OpenCommandEditor()
