@@ -182,7 +182,7 @@ public partial class App : System.Windows.Application
     {
         if (_commanderWindow is not { IsLoaded: true })
         {
-            _commanderWindow = new M2CommanderWindow(_settings) { Icon = _windowIcon };
+            _commanderWindow = new M2CommanderWindow(_settings, _fileIndex) { Icon = _windowIcon };
             _commanderWindow.Closed += (_, _) => _commanderWindow = null;
         }
 

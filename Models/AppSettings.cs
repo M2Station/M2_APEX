@@ -177,7 +177,13 @@ public sealed class CommanderCommand : INotifyPropertyChanged
     };
 
     /// <summary>Best-effort lookup of the installed VS Code executable; falls back to "code" (PATH).</summary>
-    private static string DetectVsCode()
+    private static string DetectVsCode() => FindVsCode() ?? "code";
+
+    /// <summary>
+    /// Locates the installed VS Code <c>Code.exe</c> in the usual per-user / machine spots, or
+    /// returns <c>null</c> when it is not found. Used by the F11 "Auto detect" button.
+    /// </summary>
+    internal static string? FindVsCode()
     {
         string[] candidates =
         {
@@ -192,6 +198,6 @@ public sealed class CommanderCommand : INotifyPropertyChanged
             catch { /* ignore malformed candidate */ }
         }
 
-        return "code";
+        return null;
     }
 }
