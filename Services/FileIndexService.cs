@@ -65,7 +65,7 @@ public sealed class FileIndexService
             }
 
             _items = list.ToArray();
-            StatusChanged?.Invoke($"Loaded {_items.Length:N0} indexed items from cache");
+            StatusChanged?.Invoke(Loc.T("index.loaded", _items.Length.ToString("N0")));
         }
         catch
         {
@@ -85,7 +85,7 @@ public sealed class FileIndexService
             return;
 
         IsIndexing = true;
-        StatusChanged?.Invoke("Indexing…");
+        StatusChanged?.Invoke(Loc.T("index.indexing"));
 
         try
         {
@@ -144,21 +144,21 @@ public sealed class FileIndexService
                 if (result.Count - lastReported >= 20000)
                 {
                     lastReported = result.Count;
-                    StatusChanged?.Invoke($"Indexing… {result.Count:N0} items");
+                    StatusChanged?.Invoke(Loc.T("index.indexingCount", result.Count.ToString("N0")));
                 }
             }
 
             _items = result.ToArray();
             SaveCache(_items);
-            StatusChanged?.Invoke($"Indexed {_items.Length:N0} items");
+            StatusChanged?.Invoke(Loc.T("index.done", _items.Length.ToString("N0")));
         }
         catch (OperationCanceledException)
         {
-            StatusChanged?.Invoke("Indexing cancelled");
+            StatusChanged?.Invoke(Loc.T("index.cancelled"));
         }
         catch (Exception ex)
         {
-            StatusChanged?.Invoke($"Indexing failed: {ex.Message}");
+            StatusChanged?.Invoke(Loc.T("index.failed", ex.Message));
         }
         finally
         {

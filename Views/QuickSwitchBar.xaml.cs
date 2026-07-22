@@ -6,6 +6,7 @@ using System.Windows.Interop;
 
 using Listly.Models;
 using Listly.Native;
+using Listly.Services;
 
 using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 
@@ -64,7 +65,7 @@ public partial class QuickSwitchBar : Window
 
         if (results.Count == 0)
         {
-            CountText.Text = "No matching item";
+            CountText.Text = Loc.T("quick.noMatch");
             ResultsList.SelectedIndex = -1;
             return;
         }

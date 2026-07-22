@@ -1,0 +1,48 @@
+name: PR Check
+
+# Pre-merge gate for pull requests into main. To enforce it, add the "verify"
+# check to a branch protection rule:
+#   Settings → Branches → Add rule for `main`
+#     → Require a pull request before merging
+#     → Require status checks to pass before merging → select "verify"
+on:
+  pull_request:
+    branches: [ main ]
+
+# Cancel superseded runs when a PR is updated.
+concurrency:
+  group: pr-check-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore M2_APEX.csproj
+
+      - name: Build (Release)
+        run: dotnet build M2_APEX.csproj -c Release --no-restore
+
+      - name: Validate localization JSON
+        shell: pwsh
+        run: |
+          try {
+            Get-Content Assets/Strings.json -Raw -Encoding UTF8 | ConvertFrom-Json | Out-Null
+            Write-Host 'Strings.json is valid JSON.'
+          } catch {
+            Write-Error "Strings.json is invalid: $_"
+            exit 1
+          }

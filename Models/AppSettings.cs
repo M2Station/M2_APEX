@@ -65,6 +65,9 @@ public sealed class AppSettings
     /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
     public string Theme { get; set; } = "low_key";
 
+    /// <summary>UI language id (e.g. "en", "zh-TW"); empty = follow the system UI language.</summary>
+    public string Language { get; set; } = "";
+
     /// <summary>Where the main search bar (double-Ctrl / Alt+Space) appears on screen.</summary>
     public BarPosition SearchBarPosition { get; set; } = BarPosition.Top;
 

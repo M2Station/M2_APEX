@@ -19,4 +19,8 @@
     <NoWarn>WFO0003</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Strings.json" />
+  </ItemGroup>
+
 </Project>
