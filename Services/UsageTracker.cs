@@ -82,6 +82,17 @@ public sealed class UsageTracker
         Save();
     }
 
+    /// <summary>Clears all recorded usage so the recent / frequent list starts empty.</summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _entries.Clear();
+        }
+
+        Save();
+    }
+
     /// <summary>Returns a ranking bonus based on launch frequency and recency.</summary>
     public double GetBonus(string key)
     {

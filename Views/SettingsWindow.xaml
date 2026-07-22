@@ -231,6 +231,66 @@
                 <TextBox x:Name="PriorityBox" Height="90" AcceptsReturn="True"
                          VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
 
+                <!-- Quick picks: user-pinned entries shown at the top of the main search list -->
+                <TextBlock Text="{b:Loc settings.searchLinks}" Style="{StaticResource Header}" />
+                <TextBlock Text="{b:Loc settings.searchLinksHint}"
+                           Margin="0,0,0,6" TextWrapping="Wrap" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                <Grid Margin="0,2,0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="98" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{b:Loc settings.searchLinkName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    <TextBlock Grid.Column="1" Text="{b:Loc settings.searchLinkTarget}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    <TextBlock Grid.Column="2" Text="{b:Loc settings.searchLinkArgs}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                </Grid>
+                <ItemsControl x:Name="SearchLinkList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="30" />
+                                    <ColumnDefinition Width="30" />
+                                    <ColumnDefinition Width="30" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="13" VerticalContentAlignment="Center" />
+                                <TextBox Grid.Column="1" Margin="6,0,0,0"
+                                         Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="13" VerticalContentAlignment="Center" />
+                                <TextBox Grid.Column="2" Margin="6,0,0,0"
+                                         Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="13" VerticalContentAlignment="Center" />
+                                <Button Grid.Column="3" Margin="4,0,0,0" Content="&#x2191;" Tag="{Binding}"
+                                        Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
+                                        ToolTip="{b:Loc commander.links.up}" Click="OnSearchLinkUpClick" />
+                                <Button Grid.Column="4" Margin="4,0,0,0" Content="&#x2193;" Tag="{Binding}"
+                                        Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
+                                        ToolTip="{b:Loc commander.links.down}" Click="OnSearchLinkDownClick" />
+                                <Button Grid.Column="5" Margin="4,0,0,0" Content="&#x2715;" Tag="{Binding}"
+                                        Padding="0" Height="30" FontSize="13" VerticalAlignment="Center"
+                                        Click="OnSearchLinkRemoveClick" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="{b:Loc settings.searchLinkAdd}" HorizontalAlignment="Left"
+                        MinWidth="120" Padding="10,6" Margin="0,8,0,0" Click="OnSearchLinkAddClick" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <Button x:Name="CleanHistoryButton" Content="{b:Loc settings.cleanHistory}"
+                            Padding="12,6" Click="OnCleanHistoryClick" />
+                    <TextBlock x:Name="CleanHistoryStatus" VerticalAlignment="Center" Margin="14,0,0,0"
+                               MaxWidth="320" TextWrapping="Wrap" Text="{b:Loc settings.cleanHistoryHint}"
+                               Foreground="{DynamicResource ThemeSubtleBrush}" />
+                </StackPanel>
+
                 <TextBlock Text="{b:Loc settings.indexing}" Style="{StaticResource Header}" />
                 <CheckBox x:Name="HiddenBox" Content="{b:Loc settings.hidden}" />
                 <TextBlock Text="{b:Loc settings.drives}"

@@ -65,6 +65,14 @@ public sealed class AppSettings
     /// </summary>
     public List<string> PriorityLocations { get; set; } = new() { "Desktop" };
 
+    /// <summary>
+    /// User-defined quick picks pinned to the top of the main search list. Each entry opens
+    /// <see cref="SearchLink.Target"/> (an app / folder / UNC path or URL); the optional
+    /// <see cref="SearchLink.Arguments"/> may contain <c>{path}</c>, replaced at launch with the
+    /// folder that was focused (e.g. the front Explorer window) when the search bar opened.
+    /// </summary>
+    public List<SearchLink> SearchLinks { get; set; } = new();
+
     /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
     public string Theme { get; set; } = "low_key";
 
@@ -268,4 +276,43 @@ public sealed class CommanderLink : INotifyPropertyChanged
     {
         new CommanderLink { Name = "M2_STATION", Target = @"\\192.168.100.168" },
     };
+}
+
+/// <summary>
+/// A user-defined quick pick shown pinned at the top of the main search list. <see cref="Target"/>
+/// may be an application path, a folder / UNC path, or a URL. <see cref="Arguments"/> is optional and
+/// only used when launching an executable; the token <c>{path}</c> in either field is replaced with
+/// the folder focused when the search bar opened (e.g. the current Windows Explorer window).
+/// </summary>
+public sealed class SearchLink : INotifyPropertyChanged
+{
+    private string _name = string.Empty;
+    private string _target = string.Empty;
+    private string _arguments = string.Empty;
+
+    /// <summary>Text shown in the search result (falls back to <see cref="Target"/> when blank).</summary>
+    public string Name
+    {
+        get => _name;
+        set { if (_name != value) { _name = value; OnChanged(nameof(Name)); } }
+    }
+
+    /// <summary>An application path, a folder / UNC path, or a URL. URLs open in the browser.</summary>
+    public string Target
+    {
+        get => _target;
+        set { if (_target != value) { _target = value; OnChanged(nameof(Target)); } }
+    }
+
+    /// <summary>Optional launch arguments; <c>{path}</c> is replaced with the focused folder.</summary>
+    public string Arguments
+    {
+        get => _arguments;
+        set { if (_arguments != value) { _arguments = value; OnChanged(nameof(Arguments)); } }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnChanged(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

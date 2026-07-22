@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -13,15 +14,18 @@ public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
+    private readonly UsageTracker _usage;
+    private readonly ObservableCollection<SearchLink> _editSearchLinks = new();
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
     private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom"), Loc.T("pos.topLeft"), Loc.T("pos.bottomRight") };
     private bool _loadingTheme;
     private bool _loadingLanguage;
 
-    public SettingsWindow(AppSettings settings, FileIndexService fileIndex)
+    public SettingsWindow(AppSettings settings, FileIndexService fileIndex, UsageTracker usage)
     {
         _settings = settings;
         _fileIndex = fileIndex;
+        _usage = usage;
 
         InitializeComponent();
         LoadFromSettings();
@@ -66,6 +70,13 @@ public partial class SettingsWindow : Window
         MaxResultsBox.Text = _settings.MaxResults.ToString();
         WebUrlBox.Text = _settings.WebSearchUrl;
         PriorityBox.Text = string.Join(Environment.NewLine, _settings.PriorityLocations);
+
+        _settings.SearchLinks ??= new();
+        _editSearchLinks.Clear();
+        foreach (var link in _settings.SearchLinks)
+            _editSearchLinks.Add(new SearchLink { Name = link.Name, Target = link.Target, Arguments = link.Arguments });
+        SearchLinkList.ItemsSource = _editSearchLinks;
+
         HiddenBox.IsChecked = _settings.IndexHiddenFiles;
         DrivesBox.Text = string.Join(Environment.NewLine, _settings.IndexedDrives);
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
@@ -98,6 +109,16 @@ public partial class SettingsWindow : Window
         _settings.IndexedDrives = SplitLines(DrivesBox.Text);
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
 
+        _settings.SearchLinks = _editSearchLinks
+            .Where(l => !string.IsNullOrWhiteSpace(l.Target))
+            .Select(l => new SearchLink
+            {
+                Name = (l.Name ?? string.Empty).Trim(),
+                Target = l.Target.Trim(),
+                Arguments = (l.Arguments ?? string.Empty).Trim()
+            })
+            .ToList();
+
         if (ThemeBox.SelectedIndex >= 0)
             _settings.Theme = _themes[ThemeBox.SelectedIndex].Id;
 
@@ -117,6 +138,38 @@ public partial class SettingsWindow : Window
         _settings.IndexedDrives = SplitLines(DrivesBox.Text);
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
         _ = _fileIndex.BuildAsync();
+    }
+
+    private void OnSearchLinkAddClick(object sender, RoutedEventArgs e) =>
+        _editSearchLinks.Add(new SearchLink());
+
+    private void OnSearchLinkRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: SearchLink link })
+            _editSearchLinks.Remove(link);
+    }
+
+    private void OnSearchLinkUpClick(object sender, RoutedEventArgs e) => MoveSearchLink(sender, -1);
+
+    private void OnSearchLinkDownClick(object sender, RoutedEventArgs e) => MoveSearchLink(sender, +1);
+
+    private void MoveSearchLink(object sender, int delta)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: SearchLink link })
+            return;
+
+        int i = _editSearchLinks.IndexOf(link);
+        int j = i + delta;
+        if (i < 0 || j < 0 || j >= _editSearchLinks.Count)
+            return;
+
+        _editSearchLinks.Move(i, j);
+    }
+
+    private void OnCleanHistoryClick(object sender, RoutedEventArgs e)
+    {
+        _usage.Clear();
+        CleanHistoryStatus.Text = Loc.T("settings.searchHistoryCleared");
     }
 
     private void OnCheckStartupClick(object sender, RoutedEventArgs e) => ShowStartupStatus();

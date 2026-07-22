@@ -41,6 +41,9 @@ public sealed class SearchEngine
         var queryLower = query.ToLowerInvariant();
         var candidates = new List<SearchResult>(128);
 
+        // User-pinned quick picks that match the query pin to the top of the list.
+        AddQuickLinkMatches(queryLower, candidates);
+
         // Direct path entry (e.g. the user pasted a full path).
         if (query.Length >= 3 && (File.Exists(query) || Directory.Exists(query)))
             candidates.Add(BuildPathResult(query));
@@ -259,14 +262,97 @@ public sealed class SearchEngine
         }
     }
 
+    /// <summary>Score added to a matching quick pick so it pins to the very top of the list.</summary>
+    private const double QuickLinkBonus = 1000.0;
+
+    /// <summary>User-pinned quick picks that fuzzy-match the query, ranked above everything else.</summary>
+    private void AddQuickLinkMatches(string queryLower, List<SearchResult> candidates)
+    {
+        var links = _settings.SearchLinks;
+        if (links is null)
+            return;
+
+        foreach (var link in links)
+        {
+            if (string.IsNullOrWhiteSpace(link.Target))
+                continue;
+
+            string name = string.IsNullOrWhiteSpace(link.Name) ? link.Target : link.Name;
+            double score = FuzzyMatcher.Score(queryLower, name);
+            if (double.IsNegativeInfinity(score))
+                continue;
+
+            candidates.Add(BuildQuickLink(link, score + QuickLinkBonus));
+        }
+    }
+
+    /// <summary>Every configured quick pick, used to seed the empty-query (initial) list.</summary>
+    private IEnumerable<SearchResult> AllQuickLinks()
+    {
+        var links = _settings.SearchLinks;
+        if (links is null)
+            yield break;
+
+        foreach (var link in links)
+            if (!string.IsNullOrWhiteSpace(link.Target))
+                yield return BuildQuickLink(link, 0);
+    }
+
+    private SearchResult BuildQuickLink(SearchLink link, double score)
+    {
+        string target = (link.Target ?? string.Empty).Trim();
+        string title = string.IsNullOrWhiteSpace(link.Name) ? target : link.Name.Trim();
+        string subtitle = string.IsNullOrWhiteSpace(link.Arguments)
+            ? target
+            : target + " " + link.Arguments.Trim();
+
+        return new SearchResult
+        {
+            Title = title,
+            Subtitle = subtitle,
+            Path = target,
+            Kind = ResultKind.QuickLink,
+            Glyph = QuickLinkGlyph(target),
+            Score = score,
+            Link = link
+        };
+    }
+
+    private static string QuickLinkGlyph(string target)
+    {
+        if (target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            target.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return IconGlyph.Web;
+
+        if (target.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+            target.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+            return IconGlyph.App;
+
+        bool isDir = target.StartsWith(@"\\") || Directory.Exists(target) || !Path.HasExtension(target);
+        return IconGlyph.ForFile(target, isDir);
+    }
+
     private List<SearchResult> EmptyQueryResults(int max)
     {
         var results = new List<SearchResult>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // User-pinned quick picks always sit at the very top.
+        foreach (var link in AllQuickLinks())
+        {
+            results.Add(link);
+            if (!string.IsNullOrEmpty(link.Path))
+                seen.Add(link.Path);
+        }
+
+        // Then the recent / frequently launched items (skipping anything already pinned).
         foreach (var key in _usage.TopItems(max))
         {
             var resolved = ResolveKey(key);
-            if (resolved is not null)
-                results.Add(resolved);
+            if (resolved is null || !seen.Add(resolved.Path))
+                continue;
+
+            results.Add(resolved);
         }
 
         return results;

@@ -199,7 +199,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        _settingsWindow = new SettingsWindow(_settings, _fileIndex) { Icon = _windowIcon };
+        _settingsWindow = new SettingsWindow(_settings, _fileIndex, _usage) { Icon = _windowIcon };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
         _settingsWindow.Activate();
