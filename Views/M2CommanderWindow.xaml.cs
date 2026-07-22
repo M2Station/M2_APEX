@@ -310,6 +310,10 @@ public partial class M2CommanderWindow : Window
         {
             full = DrivesView;
         }
+        else if (IsUncServerRoot(dir))
+        {
+            full = dir.TrimEnd(Path.DirectorySeparatorChar);
+        }
         else
         {
             try { full = Path.GetFullPath(dir); }
@@ -417,22 +421,45 @@ public partial class M2CommanderWindow : Window
     }
 
     /// <summary>
-    /// Opens a quick link: a browsable folder / UNC share is navigated in-pane; anything else
-    /// (a URL, a host, or a file) is handed to the OS — a URL opens in the default browser.
+    /// Opens a quick link. Web pages (http/https) open in the default browser; a file opens with
+    /// its default app; a folder / drive / UNC path (including a bare server like \\host) is browsed
+    /// inside M2_Commander rather than popping open a separate Explorer window.
     /// </summary>
     private void OpenLink(Pane pane, string target)
     {
-        try
+        if (IsWebUrl(target))
         {
-            if (Directory.Exists(target))
-                NavigateTo(pane, target, null, pushHistory: true);
-            else
-                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            OpenFile(target);
+            return;
         }
-        catch (Exception ex)
+
+        if (File.Exists(target))
         {
-            Warn(ex.Message);
+            OpenFile(target);
+            return;
         }
+
+        if (Directory.Exists(target) || target.StartsWith(@"\\", StringComparison.Ordinal))
+        {
+            NavigateTo(pane, target, null, pushHistory: true);
+            return;
+        }
+
+        OpenFile(target);
+    }
+
+    private static bool IsWebUrl(string target) =>
+        target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        target.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True for a bare UNC server root like <c>\\host</c> (no share segment).</summary>
+    private static bool IsUncServerRoot(string? dir)
+    {
+        if (dir is null || !dir.StartsWith(@"\\", StringComparison.Ordinal))
+            return false;
+
+        string body = dir.Substring(2).TrimEnd(Path.DirectorySeparatorChar);
+        return body.Length > 0 && !body.Contains(Path.DirectorySeparatorChar);
     }
 
     private void InvokeSelected()
@@ -783,6 +810,9 @@ public partial class M2CommanderWindow : Window
             return true;
         }
 
+        if (IsUncServerRoot(dir))
+            return TryBuildShellFolder(dir, out entries, out error);
+
         try
         {
             var info = new DirectoryInfo(dir);
@@ -854,6 +884,101 @@ public partial class M2CommanderWindow : Window
         {
             error = ex.Message;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Lists a location Explorer can browse but the file APIs cannot — chiefly a bare UNC server
+    /// (<c>\\host</c>) whose shares aren't enumerable via DirectoryInfo — using the Shell COM object.
+    /// Runs on the UI (STA) thread. Returns folders / shares first, then files.
+    /// </summary>
+    private static bool TryBuildShellFolder(string dir, out List<CommanderEntry> entries, out string error)
+    {
+        entries = new List<CommanderEntry>();
+        error = string.Empty;
+
+        dynamic? shell = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("Shell.Application");
+            if (shellType is null)
+            {
+                error = "Shell.Application unavailable";
+                return false;
+            }
+
+            shell = Activator.CreateInstance(shellType);
+            dynamic? folder = shell!.NameSpace(dir);
+            if (folder is null)
+            {
+                error = $"Cannot open {dir}";
+                return false;
+            }
+
+            entries.Add(new CommanderEntry
+            {
+                Name = "..",
+                Path = ParentOf(dir),
+                IsFolder = true,
+                IsParent = true,
+                Glyph = IconGlyph.Folder,
+                SizeText = "<UP>",
+                DateText = string.Empty
+            });
+
+            var dirs = new List<CommanderEntry>();
+            var files = new List<CommanderEntry>();
+
+            dynamic items = folder.Items();
+            int count = items.Count;
+            for (int i = 0; i < count; i++)
+            {
+                dynamic? item = items.Item(i);
+                if (item is null)
+                    continue;
+
+                try
+                {
+                    string name = item.Name;
+                    string path = item.Path;
+                    bool isFolder = item.IsFolder;
+
+                    var entry = new CommanderEntry
+                    {
+                        Name = name,
+                        Path = path,
+                        IsFolder = isFolder,
+                        Glyph = isFolder ? IconGlyph.Folder : IconGlyph.ForFile(path, false),
+                        SizeText = isFolder ? "<DIR>" : string.Empty,
+                        DateText = string.Empty
+                    };
+
+                    (isFolder ? dirs : files).Add(entry);
+                }
+                catch
+                {
+                    // Skip items we cannot read.
+                }
+            }
+
+            dirs.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            files.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            entries.AddRange(dirs);
+            entries.AddRange(files);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+        finally
+        {
+            if (shell is not null)
+            {
+                try { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell); }
+                catch { /* best effort */ }
+            }
         }
     }
 
