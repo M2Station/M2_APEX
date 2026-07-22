@@ -87,7 +87,7 @@ public partial class M2CommanderWindow : Window
             WindowState = WindowState.Normal;
 
         Activate();
-        _active.List.Focus();
+        FocusSelected(_active);
     }
 
     // --- Navigation ---------------------------------------------------------
@@ -273,7 +273,7 @@ public partial class M2CommanderWindow : Window
         }
 
         RefreshBoth();
-        _active.List.Focus();
+        FocusSelected(_active);
     }
 
     private void PromptMkdir()
@@ -495,7 +495,11 @@ public partial class M2CommanderWindow : Window
         }
 
         if (_active == pane)
+        {
             UpdateStatus();
+            if (IsLoaded)
+                FocusSelected(pane);
+        }
     }
 
     private static void SelectByName(Pane pane, string name)
@@ -529,6 +533,25 @@ public partial class M2CommanderWindow : Window
     private Pane Other(Pane pane) => pane == _left ? _right : _left;
 
     private CommanderEntry? ActiveSelected() => _active.List.SelectedItem as CommanderEntry;
+
+    /// <summary>
+    /// Gives keyboard focus to the selected row's container so the next arrow key moves from it.
+    /// Setting SelectedIndex programmatically leaves keyboard focus unset, which makes the first
+    /// Up/Down after navigating jump to row 0.
+    /// </summary>
+    private static void FocusSelected(Pane pane)
+    {
+        pane.List.UpdateLayout();
+        if (pane.List.SelectedIndex >= 0
+            && pane.List.ItemContainerGenerator.ContainerFromIndex(pane.List.SelectedIndex) is ListBoxItem container)
+        {
+            container.Focus();
+        }
+        else
+        {
+            pane.List.Focus();
+        }
+    }
 
     private void UpdateActiveVisual()
     {
@@ -568,7 +591,7 @@ public partial class M2CommanderWindow : Window
     {
         PromptOverlay.Visibility = Visibility.Collapsed;
         _promptAction = null;
-        _active.List.Focus();
+        FocusSelected(_active);
     }
 
     private void OnPromptOkClick(object sender, RoutedEventArgs e)
@@ -612,7 +635,7 @@ public partial class M2CommanderWindow : Window
     private void CloseHelp()
     {
         HelpOverlay.Visibility = Visibility.Collapsed;
-        _active.List.Focus();
+        FocusSelected(_active);
     }
 
     // --- Input --------------------------------------------------------------
@@ -688,7 +711,7 @@ public partial class M2CommanderWindow : Window
         {
             case Key.Tab:
                 SetActive(Other(_active));
-                _active.List.Focus();
+                FocusSelected(_active);
                 e.Handled = true;
                 break;
             case Key.Enter:
