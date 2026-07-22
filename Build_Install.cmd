@@ -12,6 +12,13 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 echo %cmdcmdline%| find /i "%~nx0" >nul && set "DBLCLICK=1"
 
+rem --- ensure a usable .NET SDK is available (auto-installs if missing) ---
+call "%~dp0_ensure_dotnet.cmd"
+if errorlevel 1 (
+  if defined DBLCLICK pause
+  exit /b 1
+)
+
 set "PROJECT=M2_APEX.csproj"
 set "ISS=installer\M2_APEX.iss"
 

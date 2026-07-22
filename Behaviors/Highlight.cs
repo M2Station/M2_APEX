@@ -55,6 +55,20 @@ public static class Highlight
     public static IReadOnlyList<int>? GetMatchIndices(DependencyObject element) =>
         (IReadOnlyList<int>?)element.GetValue(MatchIndicesProperty);
 
+    // When true, matched characters render as an inverted accent "block" (accent background +
+    // panel-coloured text) rather than accent-coloured text. Used for rows whose text is itself
+    // accent-coloured (e.g. M2_Commander folders), where accent-on-accent would be invisible.
+    public static readonly DependencyProperty BlockModeProperty =
+        DependencyProperty.RegisterAttached(
+            "BlockMode", typeof(bool), typeof(Highlight),
+            new PropertyMetadata(false, OnMatchChanged));
+
+    public static void SetBlockMode(DependencyObject element, bool value) =>
+        element.SetValue(BlockModeProperty, value);
+
+    public static bool GetBlockMode(DependencyObject element) =>
+        (bool)element.GetValue(BlockModeProperty);
+
     private static void OnMatchChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is TextBlock textBlock)
@@ -75,6 +89,7 @@ public static class Highlight
             return;
         }
 
+        bool block = GetBlockMode(textBlock);
         var matchedSet = new HashSet<int>(matched);
         var buffer = new System.Text.StringBuilder();
         bool bufferMatched = false;
@@ -87,7 +102,17 @@ public static class Highlight
             var run = new Run(buffer.ToString());
             if (bufferMatched)
             {
-                run.SetResourceReference(TextElement.ForegroundProperty, "ThemeAccentBrush");
+                if (block)
+                {
+                    // Inverted block so matches stay visible on already-accent text (folders).
+                    run.SetResourceReference(TextElement.BackgroundProperty, "ThemeAccentBrush");
+                    run.SetResourceReference(TextElement.ForegroundProperty, "ThemePanelBrush");
+                }
+                else
+                {
+                    run.SetResourceReference(TextElement.ForegroundProperty, "ThemeAccentBrush");
+                }
+
                 run.FontWeight = FontWeights.SemiBold;
             }
 
