@@ -76,6 +76,8 @@
                 <DataTrigger Binding="{Binding IsFolder}" Value="True">
                     <Setter TargetName="NameText" Property="FontWeight" Value="SemiBold" />
                     <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
+                    <!-- Folder names are accent-coloured, so render filter matches as an inverted block. -->
+                    <Setter TargetName="NameText" Property="b:Highlight.BlockMode" Value="True" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
