@@ -263,6 +263,27 @@ public partial class M2CommanderWindow : Window
         StatusText.Text = Loc.T("commander.copiedMark", sel.Name);
     }
 
+    /// <summary>
+    /// Copies the full path of the selected file or folder to the Windows clipboard.
+    /// Clipboard is ambiguous here (WPF vs WinForms), so it is fully qualified.
+    /// </summary>
+    private void CopyPathSelected()
+    {
+        var sel = ActiveSelected();
+        if (sel is null || sel.IsParent)
+            return;
+
+        try
+        {
+            System.Windows.Clipboard.SetText(sel.Path);
+            StatusText.Text = Loc.T("commander.pathCopied", sel.Path);
+        }
+        catch
+        {
+            // Clipboard can transiently fail when another app holds it; ignore.
+        }
+    }
+
     private void PasteClipboard()
     {
         if (_clipSource is null || !(File.Exists(_clipSource) || Directory.Exists(_clipSource)))
@@ -836,6 +857,7 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.copy"), "Ctrl+C", hasItem, CopySelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.paste"), "Ctrl+V", canPaste, PasteClipboard));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, hasItem, MoveSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.copyPath"), string.Empty, hasItem, CopyPathSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.delete"), "Del", hasItem, DeleteSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.fastDelete"), "Shift+Del", isFolder, FastDeleteFolderSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.rename"), "F2", hasItem, PromptRename));
