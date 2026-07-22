@@ -98,11 +98,11 @@
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
-                        <Path Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
+                        <Path Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center"
                               Data="{x:Static a:M2Logo.Geometry}"
                               Fill="{DynamicResource ThemeAccentBrush}" />
-                        <TextBlock Text="Commander" Margin="6,0,0,0" VerticalAlignment="Center"
-                                   FontSize="12.5" FontWeight="SemiBold"
+                        <TextBlock x:Name="BrandText" Text="M2 Commander" Margin="7,0,0,0" VerticalAlignment="Center"
+                                   FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThemeTextBrush}" />
                     </StackPanel>
                 </Grid>

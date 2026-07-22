@@ -82,6 +82,8 @@ public partial class M2CommanderWindow : Window
         _fileIndex = fileIndex;
         InitializeComponent();
 
+        BrandText.Text = $"M2 Commander v{UpdateService.CurrentVersion}";
+
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewTextInput += OnPreviewTextInput;
         PreviewMouseDown += OnWindowMouseDown;
