@@ -247,6 +247,8 @@ public partial class M2CommanderWindow : Window
             _active = _panes[Math.Min(idx, _panes.Count - 1)];
 
         RebuildPaneLayout();
+        foreach (var p in _panes)
+            UpdatePaneHeader(p);
         UpdateActiveVisual();
         UpdatePaneChrome();
         UpdateStatus();
@@ -261,6 +263,14 @@ public partial class M2CommanderWindow : Window
             pane.CloseButton.Visibility = canClose ? Visibility.Visible : Visibility.Collapsed;
 
         AddPaneButton.Visibility = _panes.Count < MaxPanes ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Sets a pane's header to "Pn: path" where n is its 1-based column position.</summary>
+    private void UpdatePaneHeader(Pane pane)
+    {
+        int no = _panes.IndexOf(pane) + 1;
+        string body = DisplayPath(pane.Dir);
+        pane.Header.Text = no > 0 ? $"P{no}: {body}" : body;
     }
 
     private Pane PaneForList(object list) => _panes.FirstOrDefault(p => ReferenceEquals(p.List, list)) ?? _active;
@@ -422,6 +432,22 @@ public partial class M2CommanderWindow : Window
         }
     }
 
+    /// <summary>Opens the active pane's current folder in Windows File Explorer (This PC on the drives view).</summary>
+    private void OpenInExplorer()
+    {
+        try
+        {
+            string arg = string.IsNullOrEmpty(_active.Dir) || _active.Dir == DrivesView
+                ? "shell:MyComputerFolder"
+                : $"\"{_active.Dir}\"";
+            Process.Start(new ProcessStartInfo("explorer.exe", arg) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Warn(ex.Message);
+        }
+    }
+
     /// <summary>
     /// Opens a quick link. Web pages (http/https) open in the default browser; a file opens with
     /// its default app; a folder / drive / UNC path (including a bare server like \\host) is browsed
@@ -560,26 +586,46 @@ public partial class M2CommanderWindow : Window
         if (from.Count == 0)
             return;
 
-        try
-        {
-            var op = new NativeMethods.SHFILEOPSTRUCT
-            {
-                hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle,
-                wFunc = func,
-                // Null-separated, double-null-terminated list so one call handles multiple items.
-                pFrom = string.Join("\0", from) + "\0\0",
-                pTo = to is null ? null : to + "\0\0",
-                fFlags = extraFlags
-            };
-            NativeMethods.SHFileOperation(ref op);
-        }
-        catch (Exception ex)
-        {
-            Warn(ex.Message);
-        }
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        // Null-separated, double-null-terminated lists so one call handles multiple items.
+        string pFrom = string.Join("\0", from) + "\0\0";
+        string? pTo = to is null ? null : to + "\0\0";
 
-        RefreshBoth();
-        FocusSelected(_active);
+        // Run the blocking shell operation off the UI thread so copying / moving / deleting a large
+        // tree keeps the window responsive (the shell shows its own progress dialog). It runs on an
+        // STA thread as required by the COM-based file operation and its dialogs.
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                var op = new NativeMethods.SHFILEOPSTRUCT
+                {
+                    hwnd = hwnd,
+                    wFunc = func,
+                    pFrom = pFrom,
+                    pTo = pTo,
+                    fFlags = extraFlags
+                };
+                NativeMethods.SHFileOperation(ref op);
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => Warn(ex.Message));
+            }
+            finally
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    RefreshBoth();
+                    FocusSelected(_active);
+                });
+            }
+        })
+        {
+            IsBackground = true
+        };
+        worker.SetApartmentState(ApartmentState.STA);
+        worker.Start();
     }
 
     /// <summary>
@@ -1016,7 +1062,7 @@ public partial class M2CommanderWindow : Window
         foreach (var entry in entries)
             pane.Entries.Add(entry);
 
-        pane.Header.Text = DisplayPath(dir);
+        UpdatePaneHeader(pane);
 
         int index = 0;
         if (selectName != null)
@@ -1247,6 +1293,7 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.rename"), "F2", hasItem, PromptRename));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.openExplorer"), string.Empty, true, OpenInExplorer));
 
         if (_settings.CommanderCommands.Count > 0)
         {

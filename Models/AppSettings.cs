@@ -136,9 +136,9 @@ public sealed class AppSettings
     }
 
     /// <summary>
-    /// One-time in-memory upgrade of seeded commands still on a superseded default. Currently a
-    /// "Beyond Compare" entry left on the single-path <c>{path}</c> default is switched to compare
-    /// the two panes (<c>{left}</c> vs <c>{right}</c>). User-customised arguments are left untouched.
+    /// One-time in-memory upgrade of seeded commands still on a superseded default. A "Beyond
+    /// Compare" entry is moved onto the two-pane compare (<c>{left}</c> vs <c>{right}</c>) when it
+    /// is still on the single-path <c>{path}</c> default, and relabelled to "Beyond Compare P1:P2".
     /// </summary>
     private void UpgradeLegacyCommands()
     {
@@ -147,10 +147,11 @@ public sealed class AppSettings
 
         foreach (var cmd in CommanderCommands)
         {
-            if (string.Equals(cmd.Label?.Trim(), "Beyond Compare", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(cmd.Arguments?.Trim(), "\"{path}\"", StringComparison.Ordinal))
+            if (string.Equals(cmd.Label?.Trim(), "Beyond Compare", StringComparison.OrdinalIgnoreCase))
             {
-                cmd.Arguments = "\"{left}\" \"{right}\"";
+                if (string.Equals(cmd.Arguments?.Trim(), "\"{path}\"", StringComparison.Ordinal))
+                    cmd.Arguments = "\"{left}\" \"{right}\"";
+                cmd.Label = "Beyond Compare P1:P2";
             }
         }
     }
