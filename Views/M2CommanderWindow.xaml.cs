@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
+using Listly.Models;
 using Listly.Native;
 using Listly.Services;
 
@@ -20,7 +21,8 @@ namespace Listly.Views;
 /// M2_Commander — a Norton Commander / muCommander style dual-pane file manager,
 /// opened with Ctrl+` from the search surfaces. Keyboard-driven: Tab switches panes,
 /// Enter opens, Backspace goes up, Alt+←/→ navigate history, and F12 lists all shortcuts.
-/// The file-operation methods (copy/move/delete/mkdir/rename) are kept but currently unbound.
+/// F1 (or right-click) opens the action menu — copy/move/delete/rename plus new folder/file —
+/// and F11 edits the user's custom launcher commands shown below the file grid.
 /// </summary>
 public partial class M2CommanderWindow : Window
 {
@@ -29,25 +31,40 @@ public partial class M2CommanderWindow : Window
     private Pane _active;
     private Action<string>? _promptAction;
 
+    private readonly AppSettings _settings;
+
+    // Working copy edited by the F11 overlay; committed to _settings only on Save.
+    private readonly ObservableCollection<CommanderCommand> _editCommands = new();
+
+    // Source of the last COPY, re-used by PASTE (pane-to-pane; no OS clipboard).
+    private string? _clipSource;
+
     // Pseudo-location shown above drive roots: a "This PC" listing of every drive.
     private const string DrivesView = "::drives::";
 
     private static readonly (string Keys, string DescKey)[] HelpRows =
     {
+        ("F1", "commander.k.actions"),
         ("Tab", "commander.k.switch"),
         ("Enter", "commander.k.open"),
         ("Backspace / Alt+↑", "commander.k.up"),
         ("Alt+←", "commander.k.back"),
         ("Alt+→", "commander.k.forward"),
+        ("Ctrl+C", "commander.k.copy"),
+        ("Ctrl+V", "commander.k.paste"),
+        ("F2", "commander.k.rename"),
+        ("Del", "commander.k.delete"),
         ("Ctrl+U", "commander.k.swap"),
         ("Ctrl+R", "commander.k.refresh"),
+        ("F11", "commander.k.commands"),
         ("Ctrl+`", "commander.k.openApp"),
         ("F12", "commander.k.help"),
         ("F10 / Esc", "commander.k.quit"),
     };
 
-    public M2CommanderWindow()
+    public M2CommanderWindow(AppSettings settings)
     {
+        _settings = settings;
         InitializeComponent();
 
         _left = new Pane { List = LeftList, Header = LeftPath, PaneBorder = LeftPane, HeaderBar = LeftHeaderBar };
@@ -59,6 +76,8 @@ public partial class M2CommanderWindow : Window
 
         LeftList.PreviewMouseDown += (_, _) => SetActive(_left);
         RightList.PreviewMouseDown += (_, _) => SetActive(_right);
+        LeftList.PreviewMouseRightButtonUp += OnListRightButtonUp;
+        RightList.PreviewMouseRightButtonUp += OnListRightButtonUp;
         LeftList.MouseDoubleClick += OnListDoubleClick;
         RightList.MouseDoubleClick += OnListDoubleClick;
         LeftList.SelectionChanged += (_, _) => { if (_active == _left) UpdateStatus(); };
@@ -66,6 +85,8 @@ public partial class M2CommanderWindow : Window
 
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseDown += OnWindowMouseDown;
+
+        RefreshCommandBar();
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         NavigateTo(_left, home, null, pushHistory: false);
@@ -230,7 +251,18 @@ public partial class M2CommanderWindow : Window
         if (sel is null || sel.IsParent)
             return;
 
+        // Norton-style: copy straight into the other pane, and remember the source so PASTE can
+        // drop another copy wherever the active pane is later pointed.
+        _clipSource = sel.Path;
         ShellOp(NativeMethods.FO_COPY, sel.Path, Other(_active).Dir, 0);
+    }
+
+    private void PasteClipboard()
+    {
+        if (_clipSource is null || !(File.Exists(_clipSource) || Directory.Exists(_clipSource)))
+            return;
+
+        ShellOp(NativeMethods.FO_COPY, _clipSource, _active.Dir, 0);
     }
 
     private void MoveSelected()
@@ -248,7 +280,10 @@ public partial class M2CommanderWindow : Window
         if (sel is null || sel.IsParent)
             return;
 
-        ShellOp(NativeMethods.FO_DELETE, sel.Path, null, NativeMethods.FOF_ALLOWUNDO);
+        // "Fast delete": permanent removal (no FOF_ALLOWUNDO, so it bypasses the Recycle Bin).
+        // FOF_NOCONFIRMATION is deliberately NOT set, so the shell still shows its standard
+        // "permanently delete?" prompt before the irreversible operation.
+        ShellOp(NativeMethods.FO_DELETE, sel.Path, null, 0);
     }
 
     private void ShellOp(uint func, string from, string? to, ushort extraFlags)
@@ -281,6 +316,29 @@ public partial class M2CommanderWindow : Window
             try
             {
                 Directory.CreateDirectory(Path.Combine(_active.Dir, name));
+                RefreshPane(_active);
+                SelectByName(_active, name);
+            }
+            catch (Exception ex)
+            {
+                Warn(ex.Message);
+            }
+        });
+    }
+
+    private void NewTextFile()
+    {
+        ShowPrompt(Loc.T("commander.newFile"), "new.txt", name =>
+        {
+            try
+            {
+                if (!Path.HasExtension(name))
+                    name += ".txt";
+
+                var full = Path.Combine(_active.Dir, name);
+                if (!File.Exists(full))
+                    File.Create(full).Dispose();
+
                 RefreshPane(_active);
                 SelectByName(_active, name);
             }
@@ -636,6 +694,205 @@ public partial class M2CommanderWindow : Window
         FocusSelected(_active);
     }
 
+    // --- Action menu (F1 / right-click) ------------------------------------
+
+    private void OnActionsClick(object sender, RoutedEventArgs e) =>
+        ShowActionMenu(ActionsButton, System.Windows.Controls.Primitives.PlacementMode.Top);
+
+    private void OnCommandsClick(object sender, RoutedEventArgs e) => OpenCommandEditor();
+
+    private void OnListRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var list = (ListBox)sender;
+        SetActive(list == LeftList ? _left : _right);
+
+        // Select the row under the cursor so the action targets it; a right-click on empty space
+        // clears the selection, leaving only paste / new-folder / new-file enabled.
+        if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is { } item)
+            item.IsSelected = true;
+        else
+            list.SelectedIndex = -1;
+
+        ShowActionMenu(list, System.Windows.Controls.Primitives.PlacementMode.MousePoint);
+        e.Handled = true;
+    }
+
+    private void ShowActionMenu(UIElement target, System.Windows.Controls.Primitives.PlacementMode placement)
+    {
+        var menu = BuildActionMenu();
+        menu.PlacementTarget = target;
+        menu.Placement = placement;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Builds the F1 / right-click action menu, enabling entries for the current context: a real
+    /// file or folder is required for copy/move/delete/rename; paste needs a prior copy; new folder
+    /// and new file always apply to the active pane. Any custom commands follow after a separator.
+    /// </summary>
+    private ContextMenu BuildActionMenu()
+    {
+        var sel = ActiveSelected();
+        bool hasItem = sel is { IsParent: false };
+        bool canPaste = _clipSource is not null && (File.Exists(_clipSource) || Directory.Exists(_clipSource));
+
+        var menu = new ContextMenu();
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.copy"), "Ctrl+C", hasItem, CopySelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.paste"), "Ctrl+V", canPaste, PasteClipboard));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, hasItem, MoveSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.delete"), "Del", hasItem, DeleteSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.rename"), "F2", hasItem, PromptRename));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
+
+        if (_settings.CommanderCommands.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            foreach (var cmd in _settings.CommanderCommands)
+            {
+                var captured = cmd;
+                menu.Items.Add(ActionItem(cmd.Label, string.Empty, true, () => RunCommand(captured)));
+            }
+        }
+
+        return menu;
+    }
+
+    private static MenuItem ActionItem(string header, string gesture, bool enabled, Action action)
+    {
+        var item = new MenuItem { Header = header, IsEnabled = enabled, InputGestureText = gesture };
+        item.Click += (_, _) => action();
+        return item;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
+    {
+        while (node is not null and not T)
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        return node as T;
+    }
+
+    // --- Custom launcher commands (buttons under the grid + F11 editor) -----
+
+    private void RefreshCommandBar()
+    {
+        CommandBar.ItemsSource = null;
+        CommandBar.ItemsSource = _settings.CommanderCommands
+            .Where(c => !string.IsNullOrWhiteSpace(c.Label))
+            .ToList();
+    }
+
+    private void OnCommandButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: CommanderCommand cmd })
+            RunCommand(cmd);
+    }
+
+    private void RunCommand(CommanderCommand cmd)
+    {
+        if (string.IsNullOrWhiteSpace(cmd.Path))
+        {
+            Warn(Loc.T("commander.cmd.noPath", cmd.Label));
+            OpenCommandEditor();
+            return;
+        }
+
+        var sel = ActiveSelected();
+        string target = sel is { IsParent: false } ? sel.Path : _active.Dir;
+        string args = (cmd.Arguments ?? string.Empty).Replace("{path}", target);
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(cmd.Path, args) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Warn(ex.Message);
+        }
+    }
+
+    private void OpenCommandEditor()
+    {
+        _editCommands.Clear();
+        foreach (var cmd in _settings.CommanderCommands)
+            _editCommands.Add(new CommanderCommand { Label = cmd.Label, Path = cmd.Path, Arguments = cmd.Arguments });
+
+        CommandEditorList.ItemsSource = _editCommands;
+        CommandEditorOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void OnCommandAddClick(object sender, RoutedEventArgs e) =>
+        _editCommands.Add(new CommanderCommand { Arguments = "\"{path}\"" });
+
+    private void OnCommandRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: CommanderCommand cmd })
+            _editCommands.Remove(cmd);
+    }
+
+    private void OnCommandBrowseClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: CommanderCommand cmd })
+            return;
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = Loc.T("commander.cmd.program"),
+            Filter = "Programs (*.exe;*.bat;*.cmd)|*.exe;*.bat;*.cmd|All files (*.*)|*.*"
+        };
+
+        try
+        {
+            var dir = Path.GetDirectoryName(cmd.Path);
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                dialog.InitialDirectory = dir;
+        }
+        catch { /* ignore malformed path */ }
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            cmd.Path = dialog.FileName;
+            if (string.IsNullOrWhiteSpace(cmd.Label))
+                cmd.Label = Path.GetFileNameWithoutExtension(dialog.FileName);
+        }
+    }
+
+    private void OnCommandSaveClick(object sender, RoutedEventArgs e)
+    {
+        var cleaned = new List<CommanderCommand>();
+        foreach (var c in _editCommands)
+        {
+            var label = (c.Label ?? string.Empty).Trim();
+            var path = (c.Path ?? string.Empty).Trim();
+            if (label.Length == 0 && path.Length == 0)
+                continue;
+            if (label.Length == 0)
+                label = Path.GetFileNameWithoutExtension(path);
+            if (label.Length == 0)
+                continue;
+
+            cleaned.Add(new CommanderCommand
+            {
+                Label = label,
+                Path = path,
+                Arguments = string.IsNullOrEmpty(c.Arguments) ? "\"{path}\"" : c.Arguments
+            });
+        }
+
+        _settings.CommanderCommands = cleaned;
+        _settings.Save();
+        RefreshCommandBar();
+        CloseCommandEditor();
+    }
+
+    private void OnCommandCancelClick(object sender, RoutedEventArgs e) => CloseCommandEditor();
+
+    private void CloseCommandEditor()
+    {
+        CommandEditorOverlay.Visibility = Visibility.Collapsed;
+        FocusSelected(_active);
+    }
+
     // --- Input --------------------------------------------------------------
 
     private void OnListDoubleClick(object sender, MouseButtonEventArgs e)
@@ -669,6 +926,17 @@ public partial class M2CommanderWindow : Window
             if (help is Key.Escape or Key.F12)
             {
                 CloseHelp();
+                e.Handled = true;
+            }
+            return;
+        }
+
+        // The F11 editor owns the keyboard while open (so text boxes work); only Esc closes it.
+        if (CommandEditorOverlay.Visibility == Visibility.Visible)
+        {
+            if ((e.Key == Key.System ? e.SystemKey : e.Key) == Key.Escape)
+            {
+                CloseCommandEditor();
                 e.Handled = true;
             }
             return;
@@ -718,6 +986,30 @@ public partial class M2CommanderWindow : Window
                 break;
             case Key.Back:
                 GoUp(_active);
+                e.Handled = true;
+                break;
+            case Key.F1:
+                ShowActionMenu(_active.List, System.Windows.Controls.Primitives.PlacementMode.Center);
+                e.Handled = true;
+                break;
+            case Key.F2:
+                PromptRename();
+                e.Handled = true;
+                break;
+            case Key.Delete:
+                DeleteSelected();
+                e.Handled = true;
+                break;
+            case Key.C when mods == ModifierKeys.Control:
+                CopySelected();
+                e.Handled = true;
+                break;
+            case Key.V when mods == ModifierKeys.Control:
+                PasteClipboard();
+                e.Handled = true;
+                break;
+            case Key.F11:
+                OpenCommandEditor();
                 e.Handled = true;
                 break;
             case Key.F12:

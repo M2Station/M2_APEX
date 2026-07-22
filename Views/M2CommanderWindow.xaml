@@ -239,21 +239,45 @@
                        Foreground="{DynamicResource ThemeSubtleBrush}" />
         </Border>
 
-        <!-- Function-key bar -->
+        <!-- Function-key bar + custom command strip (below the file grid) -->
         <Border Grid.Row="2" Background="{DynamicResource ThemeSolidBackgroundBrush}" Padding="6,6,6,8">
-            <Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button x:Name="HelpButton" Style="{StaticResource FnButtonStyle}" Click="OnHelpClick">
-                        <TextBlock><Run Text="F12 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.help}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                    </Button>
-                    <Button x:Name="QuitButton" Style="{StaticResource FnButtonStyle}" Click="OnQuitClick">
-                        <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                    </Button>
-                </StackPanel>
-                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
-                           FontSize="11.5" Foreground="{DynamicResource ThemeSubtleBrush}"
-                           Text="{b:Loc commander.hint}" />
-            </Grid>
+            <StackPanel>
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button x:Name="ActionsButton" Style="{StaticResource FnButtonStyle}" Click="OnActionsClick">
+                            <TextBlock><Run Text="F1 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.actions}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                        </Button>
+                        <Button x:Name="CommandsButton" Style="{StaticResource FnButtonStyle}" Click="OnCommandsClick">
+                            <TextBlock><Run Text="F11 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.commands}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                        </Button>
+                        <Button x:Name="HelpButton" Style="{StaticResource FnButtonStyle}" Click="OnHelpClick">
+                            <TextBlock><Run Text="F12 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.help}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                        </Button>
+                        <Button x:Name="QuitButton" Style="{StaticResource FnButtonStyle}" Click="OnQuitClick">
+                            <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                               FontSize="11.5" Foreground="{DynamicResource ThemeSubtleBrush}"
+                               Text="{b:Loc commander.hint}" />
+                </Grid>
+
+                <!-- User-defined launcher buttons (configured with F11) -->
+                <ItemsControl x:Name="CommandBar" Margin="1,4,1,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource FnButtonStyle}" Tag="{Binding}" Click="OnCommandButtonClick">
+                                <TextBlock><Run Text="&#x25B8; " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{Binding Label}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </Border>
 
         <!-- Modal prompt overlay (MkDir / Rename) -->
@@ -345,6 +369,124 @@
                                                    FontSize="13"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource ThemeTextBrush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Custom command editor overlay (F11) -->
+        <Grid x:Name="CommandEditorOverlay"
+              Grid.RowSpan="3"
+              Background="#99000000"
+              Visibility="Collapsed">
+            <Border Width="740"
+                    MaxHeight="580"
+                    Background="{DynamicResource ThemeCardBrush}"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="#000000" />
+                </Border.Effect>
+                <DockPanel Margin="20">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{b:Loc commander.cmd.title}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThemeTextBrush}" />
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{b:Loc commander.cmd.hint}"
+                               FontSize="11.5"
+                               TextWrapping="Wrap"
+                               Margin="0,4,0,12"
+                               Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                    <!-- Action buttons -->
+                    <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                        <Button Content="{b:Loc commander.cmd.add}"
+                                HorizontalAlignment="Left"
+                                MinWidth="120"
+                                Padding="10,6"
+                                Click="OnCommandAddClick" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="{b:Loc commander.ok}" MinWidth="96" Padding="10,6" Margin="0,0,8,0" Click="OnCommandSaveClick" />
+                            <Button Content="{b:Loc commander.cancel}" MinWidth="96" Padding="10,6" Click="OnCommandCancelClick" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Column headers -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="34" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="30" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{b:Loc commander.cmd.label}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="1" Text="{b:Loc commander.cmd.program}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="3" Text="{b:Loc commander.cmd.args}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </Grid>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="CommandEditorList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="34" />
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="30" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Label, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" Padding="6,4"
+                                                 VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource ThemeInputBrush}"
+                                                 Foreground="{DynamicResource ThemeTextBrush}"
+                                                 CaretBrush="{DynamicResource ThemeAccentBrush}"
+                                                 BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                                 BorderThickness="1" />
+                                        <TextBox Grid.Column="1"
+                                                 Margin="6,0,0,0"
+                                                 Text="{Binding Path, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" Padding="6,4"
+                                                 VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource ThemeInputBrush}"
+                                                 Foreground="{DynamicResource ThemeTextBrush}"
+                                                 CaretBrush="{DynamicResource ThemeAccentBrush}"
+                                                 BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                                 BorderThickness="1" />
+                                        <Button Grid.Column="2"
+                                                Margin="4,0,0,0"
+                                                Content="&#x2026;"
+                                                Tag="{Binding}"
+                                                ToolTip="{b:Loc commander.cmd.program}"
+                                                Click="OnCommandBrowseClick" />
+                                        <TextBox Grid.Column="3"
+                                                 Margin="6,0,0,0"
+                                                 Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" Padding="6,4"
+                                                 FontFamily="Consolas"
+                                                 VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource ThemeInputBrush}"
+                                                 Foreground="{DynamicResource ThemeTextBrush}"
+                                                 CaretBrush="{DynamicResource ThemeAccentBrush}"
+                                                 BorderBrush="{DynamicResource ThemeBorderBrush}"
+                                                 BorderThickness="1" />
+                                        <Button Grid.Column="4"
+                                                Margin="4,0,0,0"
+                                                Content="&#x2715;"
+                                                Tag="{Binding}"
+                                                Click="OnCommandRemoveClick" />
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

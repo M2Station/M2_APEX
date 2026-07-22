@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -74,6 +75,15 @@ public sealed class AppSettings
     /// <summary>Where the Quick Switch bar appears over the File Explorer window.</summary>
     public BarPosition QuickSwitchPosition { get; set; } = BarPosition.Top;
 
+    /// <summary>
+    /// Custom launcher entries shown in M2_Commander: as buttons below the file grid, inside the
+    /// F1 / right-click action menu, and editable via F11. Each entry runs an external program with
+    /// the selected file/folder path substituted for the <c>{path}</c> token in
+    /// <see cref="CommanderCommand.Arguments"/>. Seeded with M2_LOG / M2_ST4 / VS Code examples;
+    /// an explicit empty list in the JSON is respected (not re-seeded).
+    /// </summary>
+    public List<CommanderCommand> CommanderCommands { get; set; } = CommanderCommand.DefaultSeed();
+
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
 
@@ -111,5 +121,71 @@ public sealed class AppSettings
         {
             // Best effort; ignore write failures.
         }
+    }
+}
+
+/// <summary>
+/// A user-defined launcher entry for M2_Commander (F11 settings). Runs <see cref="Path"/> with
+/// <see cref="Arguments"/>, where the token <c>{path}</c> is replaced by the selected file/folder
+/// (or the current folder when nothing is selected). Implements change notification so the F11
+/// editor's text boxes and the "Browse…" button stay in sync.
+/// </summary>
+public sealed class CommanderCommand : INotifyPropertyChanged
+{
+    private string _label = string.Empty;
+    private string _path = string.Empty;
+    private string _arguments = "\"{path}\"";
+
+    /// <summary>Text shown on the button / menu item.</summary>
+    public string Label
+    {
+        get => _label;
+        set { if (_label != value) { _label = value; OnChanged(nameof(Label)); } }
+    }
+
+    /// <summary>Full path to the executable to launch (blank = entry is hidden).</summary>
+    public string Path
+    {
+        get => _path;
+        set { if (_path != value) { _path = value; OnChanged(nameof(Path)); } }
+    }
+
+    /// <summary>Command-line arguments; <c>{path}</c> is replaced with the target file/folder.</summary>
+    public string Arguments
+    {
+        get => _arguments;
+        set { if (_arguments != value) { _arguments = value; OnChanged(nameof(Arguments)); } }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnChanged(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    /// <summary>The example entries created on first run.</summary>
+    public static List<CommanderCommand> DefaultSeed() => new()
+    {
+        new CommanderCommand { Label = "M2_LOG", Path = string.Empty, Arguments = "\"{path}\"" },
+        new CommanderCommand { Label = "M2_ST4", Path = string.Empty, Arguments = "\"{path}\"" },
+        new CommanderCommand { Label = "VS Code", Path = DetectVsCode(), Arguments = "\"{path}\"" },
+    };
+
+    /// <summary>Best-effort lookup of the installed VS Code executable; falls back to "code" (PATH).</summary>
+    private static string DetectVsCode()
+    {
+        string[] candidates =
+        {
+            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Microsoft VS Code", "Code.exe"),
+            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft VS Code", "Code.exe"),
+            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft VS Code", "Code.exe"),
+        };
+
+        foreach (var candidate in candidates)
+        {
+            try { if (File.Exists(candidate)) return candidate; }
+            catch { /* ignore malformed candidate */ }
+        }
+
+        return "code";
     }
 }
