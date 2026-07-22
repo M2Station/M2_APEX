@@ -46,6 +46,9 @@ public partial class M2CommanderWindow : Window
     // Sources of the last COPY (one or more), re-used by PASTE (pane-to-pane; no OS clipboard).
     private List<string> _clipSources = new();
 
+    // Beyond Compare's marked "left" item (F1 menu), compared against a later selection.
+    private string? _bcLeft;
+
     // Active type-to-filter text for the current pane (empty = no filter).
     private string _filterText = string.Empty;
 
@@ -1294,6 +1297,11 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.openExplorer"), string.Empty, true, OpenInExplorer));
+        if (BeyondCompareCommand() is not null)
+        {
+            menu.Items.Add(ActionItem(Loc.T("commander.menu.bcLeft"), string.Empty, hasItem, SelectBeyondCompareLeft));
+            menu.Items.Add(ActionItem(Loc.T("commander.menu.bcCompare"), string.Empty, true, RunBeyondCompare));
+        }
 
         if (_settings.CommanderCommands.Count > 0)
         {
@@ -1364,10 +1372,80 @@ public partial class M2CommanderWindow : Window
         }
     }
 
+    // --- Beyond Compare: mark a "left" item, then compare 2 selected items (or left vs 1) --------
+
+    /// <summary>The configured Beyond Compare launcher command (matched by label or exe name), or
+    /// null when there is none with a program path set. Drives whether the BC menu actions show.</summary>
+    private CommanderCommand? BeyondCompareCommand() =>
+        _settings.CommanderCommands.FirstOrDefault(c =>
+            !string.IsNullOrWhiteSpace(c.Path)
+            && (c.Label?.Contains("Beyond Compare", StringComparison.OrdinalIgnoreCase) == true
+                || Path.GetFileNameWithoutExtension(c.Path).StartsWith("BComp", StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>Locates the Beyond Compare executable from the configured command or its known folders.</summary>
+    private string? FindBeyondComparePath()
+    {
+        var cmd = BeyondCompareCommand();
+        if (cmd is not null && File.Exists(cmd.Path))
+            return cmd.Path;
+
+        return CommanderTool.Catalog
+            .FirstOrDefault(t => t.Label.StartsWith("Beyond Compare", StringComparison.OrdinalIgnoreCase))?
+            .DetectPath();
+    }
+
+    /// <summary>Marks the selected item as Beyond Compare's left side for a later comparison.</summary>
+    private void SelectBeyondCompareLeft()
+    {
+        var item = ActiveSelectedItems().FirstOrDefault();
+        if (item is null)
+            return;
+
+        _bcLeft = item.Path;
+        StatusText.Text = Loc.T("commander.bc.leftSet", item.Name);
+    }
+
     /// <summary>
-    /// The folder a pane is showing, used by the {left}/{right} command tokens (e.g. Beyond Compare
-    /// comparing the two panes). On the "This PC" drives view it resolves to the selected drive
-    /// (or empty), since there is no real folder there.
+    /// Launches Beyond Compare. With 2+ items selected it compares the first two; with one selected
+    /// and a left already marked it compares that left vs the selection; otherwise it falls back to
+    /// comparing the two panes (P1 vs P2).
+    /// </summary>
+    private void RunBeyondCompare()
+    {
+        var exe = FindBeyondComparePath();
+        if (exe is null)
+        {
+            Warn(Loc.T("commander.bc.notFound"));
+            return;
+        }
+
+        var items = ActiveSelectedItems();
+        string left, right;
+        if (items.Count >= 2)
+        {
+            left = items[0].Path;
+            right = items[1].Path;
+        }
+        else if (items.Count == 1 && !string.IsNullOrEmpty(_bcLeft))
+        {
+            left = _bcLeft!;
+            right = items[0].Path;
+        }
+        else
+        {
+            left = PaneDir(_panes[0]);
+            right = PaneDir(_panes[_panes.Count > 1 ? 1 : 0]);
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(exe, $"\"{left}\" \"{right}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Warn(ex.Message);
+        }
+    }
     /// </summary>
     private string PaneDir(Pane pane)
     {
