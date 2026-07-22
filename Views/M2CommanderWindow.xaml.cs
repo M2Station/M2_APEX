@@ -1326,7 +1326,19 @@ public partial class M2CommanderWindow : Window
     private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
     {
         while (node is not null and not T)
-            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        {
+            // Right-clicking the highlighted file name lands on a Run (a ContentElement, not a
+            // Visual), and VisualTreeHelper.GetParent throws on those. Step through content /
+            // logical parents until we're back on a Visual, then keep walking the visual tree.
+            node = node switch
+            {
+                System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                    => System.Windows.Media.VisualTreeHelper.GetParent(node),
+                FrameworkContentElement fce => fce.Parent,
+                _ => LogicalTreeHelper.GetParent(node),
+            };
+        }
+
         return node as T;
     }
 
