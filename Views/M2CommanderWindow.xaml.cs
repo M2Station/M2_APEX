@@ -125,17 +125,15 @@ public partial class M2CommanderWindow : Window
         if (pane.Dir == DrivesView)
             return;
 
-        var trimmed = pane.Dir.TrimEnd(Path.DirectorySeparatorChar);
-        var parent = Directory.GetParent(trimmed);
-        if (parent == null)
-        {
-            // At a drive root (e.g. C:\) go up to the "This PC" list of all drives.
-            NavigateTo(pane, DrivesView, Path.GetPathRoot(pane.Dir), pushHistory: true);
-            return;
-        }
+        var parent = ParentOf(pane.Dir);
 
-        var from = Path.GetFileName(trimmed);
-        NavigateTo(pane, parent.FullName, from, pushHistory: true);
+        // At a drive root (e.g. D:\) ParentOf returns the "This PC" drives list; select the drive we
+        // came from. Otherwise select the folder we just left inside its parent.
+        var from = parent == DrivesView
+            ? Path.GetPathRoot(pane.Dir)
+            : Path.GetFileName(pane.Dir.TrimEnd(Path.DirectorySeparatorChar));
+
+        NavigateTo(pane, parent, from, pushHistory: true);
     }
 
     private void GoBack(Pane pane)
@@ -442,7 +440,7 @@ public partial class M2CommanderWindow : Window
             dirs.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             files.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
-            var parentPath = Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar))?.FullName ?? DrivesView;
+            var parentPath = ParentOf(dir);
             entries.Add(new CommanderEntry
             {
                 Name = "..",
@@ -775,6 +773,26 @@ public partial class M2CommanderWindow : Window
         }
 
         return (Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), null);
+    }
+
+    /// <summary>
+    /// Returns the parent folder of <paramref name="dir"/>, or <see cref="DrivesView"/> when it is a
+    /// drive/UNC root. We special-case the root instead of trimming and calling Directory.GetParent:
+    /// trimming a bare drive root like "D:\" yields "D:", which Windows treats as a *drive-relative*
+    /// path ("the current directory on D:"). Directory.GetParent then resolves it against the process
+    /// working directory and returns a folder *inside* the drive, so Alt+\u2191 at a drive root looped
+    /// back down into the working folder instead of reaching the "This PC" drive list.
+    /// </summary>
+    private static string ParentOf(string dir)
+    {
+        if (string.IsNullOrEmpty(dir) || dir == DrivesView)
+            return DrivesView;
+
+        var root = Path.GetPathRoot(dir);
+        if (!string.IsNullOrEmpty(root) && PathEquals(dir, root))
+            return DrivesView;
+
+        return Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar))?.FullName ?? DrivesView;
     }
 
     private static bool PathEquals(string a, string b)
