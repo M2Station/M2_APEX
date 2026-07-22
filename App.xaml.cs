@@ -42,6 +42,12 @@ public partial class App : System.Windows.Application
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             LogCrash(args.ExceptionObject as Exception);
 
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            LogCrash(args.Exception);
+            args.SetObserved();
+        };
+
         _singleInstance = new Mutex(initiallyOwned: true, "M2_APEX.SingleInstance", out bool created);
         if (!created)
         {
@@ -54,6 +60,7 @@ public partial class App : System.Windows.Application
 
         _settings = AppSettings.Load();
         ThemeManager.Apply(_settings.Theme);
+        Loc.Current = string.IsNullOrEmpty(_settings.Language) ? Loc.SystemLanguage() : _settings.Language;
         _usage = new UsageTracker();
         _fileIndex = new FileIndexService(_settings);
         _appIndex = new AppIndexService();
@@ -88,22 +95,41 @@ public partial class App : System.Windows.Application
         {
             Icon = AppIcon.CreateTrayIcon(),
             Visible = true,
-            Text = "M2_APEX — double-tap Ctrl to search"
+            Text = Loc.T("tray.tooltip")
         };
 
         _tray.DoubleClick += (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch());
         _tray.BalloonTipClicked += (_, _) => OnUpdateBalloonClicked();
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open search", null, (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch()));
-        menu.Items.Add("Rebuild index", null, (_, _) => _ = _fileIndex.BuildAsync());
-        menu.Items.Add("Settings\u2026", null, (_, _) => Dispatcher.BeginInvoke(() => OpenSettings()));
+        menu.Items.Add(Loc.T("tray.openSearch"), null, (_, _) => Dispatcher.BeginInvoke(() => _window.ShowSearch()));
+        menu.Items.Add(Loc.T("tray.rebuildIndex"), null, (_, _) => _ = _fileIndex.BuildAsync());
+        menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => Dispatcher.BeginInvoke(() => OpenSettings()));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()));
+        menu.Items.Add(Loc.T("tray.exit"), null, (_, _) => Dispatcher.BeginInvoke(() => Shutdown()));
         _tray.ContextMenuStrip = menu;
 
-        _tray.ShowBalloonTip(4000, "M2_APEX is running",
-            "Double-tap Ctrl (or press Alt+Space) to search.", Forms.ToolTipIcon.Info);
+        Loc.LanguageChanged += RefreshTrayText;
+
+        _tray.ShowBalloonTip(4000, Loc.T("tray.runningTitle"),
+            Loc.T("tray.runningBody"), Forms.ToolTipIcon.Info);
+    }
+
+    private void RefreshTrayText()
+    {
+        if (_tray is null)
+            return;
+
+        _tray.Text = Loc.T("tray.tooltip");
+
+        var items = _tray.ContextMenuStrip?.Items;
+        if (items is null || items.Count < 5)
+            return;
+
+        items[0].Text = Loc.T("tray.openSearch");
+        items[1].Text = Loc.T("tray.rebuildIndex");
+        items[2].Text = Loc.T("tray.settings");
+        items[4].Text = Loc.T("tray.exit");
     }
 
     private void StartBackgroundIndexing()
@@ -126,8 +152,8 @@ public partial class App : System.Windows.Application
             _ = Dispatcher.BeginInvoke(() =>
             {
                 _pendingUpdateUrl = info.DownloadUrl ?? info.ReleaseUrl;
-                _tray?.ShowBalloonTip(6000, "M2_APEX update available",
-                    $"Version {info.LatestVersion} is available (you have {info.CurrentVersion}). Click to download.",
+                _tray?.ShowBalloonTip(6000, Loc.T("update.balloonTitle"),
+                    Loc.T("update.balloonBody", info.LatestVersion, info.CurrentVersion),
                     Forms.ToolTipIcon.Info);
             });
         });
@@ -167,23 +193,5 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    private static void LogCrash(Exception? ex)
-    {
-        if (ex is null)
-            return;
-
-        try
-        {
-            var dir = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
-            System.IO.Directory.CreateDirectory(dir);
-            System.IO.File.AppendAllText(
-                System.IO.Path.Combine(dir, "crash.log"),
-                $"{DateTime.Now:u}  {ex}\n\n");
-        }
-        catch
-        {
-            // Nothing more we can do.
-        }
-    }
+    private static void LogCrash(Exception? ex) => CrashLog.Log(ex);
 }

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Data;
 
 using Listly.Models;
+using Listly.Services;
 
 namespace Listly.Behaviors;
 
@@ -10,11 +11,11 @@ public sealed class KindToLabelConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value switch
     {
-        ResultKind.Application => "App",
-        ResultKind.File => "File",
-        ResultKind.Folder => "Folder",
-        ResultKind.WebSearch => "Web",
-        ResultKind.Command => "Command",
+        ResultKind.Application => Loc.T("kind.app"),
+        ResultKind.File => Loc.T("kind.file"),
+        ResultKind.Folder => Loc.T("kind.folder"),
+        ResultKind.WebSearch => Loc.T("kind.web"),
+        ResultKind.Command => Loc.T("kind.command"),
         _ => string.Empty
     };
 

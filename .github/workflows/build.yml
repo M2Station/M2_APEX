@@ -1,10 +1,10 @@
 name: Build
 
-# CI: verify every push / pull request compiles in Release.
+# CI: verify every push to main compiles in Release.
+# (Pull requests are gated by pr-check.yml, so there is no pull_request trigger here.)
 on:
   push:
     branches: [ main ]
-  pull_request:
   workflow_dispatch:
 
 jobs:

@@ -80,7 +80,7 @@
                        Stretch="Uniform" />
 
                 <Grid Grid.Column="1">
-                    <TextBlock Text="Search files, apps, commands, and the web…"
+                    <TextBlock Text="{b:Loc search.placeholder}"
                                VerticalAlignment="Center"
                                FontSize="20"
                                Foreground="{DynamicResource ThemeSubtleBrush}"
@@ -182,7 +182,7 @@
                     <TextBlock HorizontalAlignment="Right"
                                FontSize="11"
                                Foreground="{DynamicResource ThemeSubtleBrush}"
-                               Text="&#x2191;&#x2193; navigate &#160;&#160;&#x21B5; open &#160;&#160;Ctrl+&#x21B5; folder &#160;&#160;Esc close" />
+                               Text="{b:Loc search.hint}" />
                 </Grid>
             </Border>
         </Grid>

@@ -14,8 +14,9 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
-    private static readonly string[] PositionLabels = { "Top", "Center", "Bottom" };
+    private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom") };
     private bool _loadingTheme;
+    private bool _loadingLanguage;
 
     public SettingsWindow(AppSettings settings, FileIndexService fileIndex)
     {
@@ -28,11 +29,13 @@ public partial class SettingsWindow : Window
         _fileIndex.StatusChanged += OnIndexStatus;
         Closed += (_, _) => _fileIndex.StatusChanged -= OnIndexStatus;
 
-        // Revert any unsaved live theme preview back to the persisted choice.
+        // Revert any unsaved live theme / language preview back to the persisted choice.
         Closed += (_, _) => ThemeManager.Apply(_settings.Theme);
+        Closed += (_, _) => Loc.Current = string.IsNullOrEmpty(_settings.Language) ? Loc.SystemLanguage() : _settings.Language;
 
-        IndexStatus.Text = $"{_fileIndex.Count:N0} items indexed";
+        IndexStatus.Text = Loc.T("index.count", _fileIndex.Count.ToString("N0"));
         CreditLogo.Data = Assets.M2Logo.Geometry;
+        CrashLogPathText.Text = CrashLog.Folder;
     }
 
     private void LoadFromSettings()
@@ -41,6 +44,11 @@ public partial class SettingsWindow : Window
         ThemeBox.ItemsSource = _themes.Select(t => t.Name).ToList();
         ThemeBox.SelectedIndex = Math.Max(0, IndexOfTheme(ThemeManager.Normalize(_settings.Theme)));
         _loadingTheme = false;
+
+        _loadingLanguage = true;
+        LanguageBox.ItemsSource = Loc.Languages.Select(l => l.Name).ToList();
+        LanguageBox.SelectedIndex = Math.Max(0, IndexOfLanguage(Loc.Current));
+        _loadingLanguage = false;
 
         DoubleCtrlBox.IsChecked = _settings.EnableDoubleCtrl;
         AltSpaceBox.IsChecked = _settings.EnableAltSpace;
@@ -59,7 +67,7 @@ public partial class SettingsWindow : Window
         DrivesBox.Text = string.Join(Environment.NewLine, _settings.IndexedDrives);
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
         StartupBox.IsChecked = StartupService.IsEnabled();
-        VersionText.Text = $"M2_APEX  v{UpdateService.CurrentVersion}";
+        VersionText.Text = Loc.T("settings.version", UpdateService.CurrentVersion);
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -88,6 +96,9 @@ public partial class SettingsWindow : Window
 
         if (ThemeBox.SelectedIndex >= 0)
             _settings.Theme = _themes[ThemeBox.SelectedIndex].Id;
+
+        if (LanguageBox.SelectedIndex >= 0)
+            _settings.Language = Loc.Languages[LanguageBox.SelectedIndex].Id;
 
         _settings.Save();
         StartupService.SetEnabled(StartupBox.IsChecked == true);
@@ -118,29 +129,31 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private void OnOpenCrashLogClick(object sender, RoutedEventArgs e) => CrashLog.OpenFolder();
+
     private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
     {
         CheckUpdateButton.IsEnabled = false;
-        UpdateStatus.Text = "Checking\u2026";
+        UpdateStatus.Text = Loc.T("update.checking");
         try
         {
             var info = await UpdateService.CheckForUpdateAsync();
             if (info is null)
             {
-                UpdateStatus.Text = "Couldn't check for updates. Try again later.";
+                UpdateStatus.Text = Loc.T("update.failed");
             }
             else if (info.HasUpdate)
             {
-                UpdateStatus.Text = $"New version {info.LatestVersion} available.";
+                UpdateStatus.Text = Loc.T("update.available", info.LatestVersion);
                 var choice = System.Windows.MessageBox.Show(this,
-                    $"A new version {info.LatestVersion} is available.\nYou have {info.CurrentVersion}.\n\nOpen the download page now?",
-                    "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    Loc.T("update.promptBody", info.LatestVersion, info.CurrentVersion),
+                    Loc.T("update.promptTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (choice == MessageBoxResult.Yes)
                     UpdateService.OpenInBrowser(info.DownloadUrl ?? info.ReleaseUrl);
             }
             else
             {
-                UpdateStatus.Text = $"You're on the latest version ({info.CurrentVersion}).";
+                UpdateStatus.Text = Loc.T("update.upToDate", info.CurrentVersion);
             }
         }
         finally
@@ -162,6 +175,23 @@ public partial class SettingsWindow : Window
     {
         for (int i = 0; i < _themes.Count; i++)
             if (_themes[i].Id == id)
+                return i;
+        return -1;
+    }
+
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingLanguage || LanguageBox.SelectedIndex < 0)
+            return;
+
+        // Live preview across every open window; persisted only on Save.
+        Loc.Current = Loc.Languages[LanguageBox.SelectedIndex].Id;
+    }
+
+    private int IndexOfLanguage(string id)
+    {
+        for (int i = 0; i < Loc.Languages.Count; i++)
+            if (string.Equals(Loc.Languages[i].Id, id, StringComparison.OrdinalIgnoreCase))
                 return i;
         return -1;
     }
