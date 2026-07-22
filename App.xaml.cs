@@ -26,6 +26,7 @@ public partial class App : System.Windows.Application
     private QuickSwitchBar _quickSwitchBar = null!;
     private QuickSwitchService _quickSwitch = null!;
     private SettingsWindow? _settingsWindow;
+    private M2CommanderWindow? _commanderWindow;
     private Forms.NotifyIcon _tray = null!;
     private System.Windows.Media.ImageSource? _windowIcon;
     private string? _pendingUpdateUrl;
@@ -85,6 +86,8 @@ public partial class App : System.Windows.Application
         _quickSwitch = new QuickSwitchService(_settings, _quickSwitchBar);
         // While the main search bar is open, keep Quick Switch dormant so focus stays on it.
         _quickSwitch.Suppressed = () => _window.IsVisible;
+        _window.OpenCommanderRequested += OpenCommander;
+        _quickSwitch.OpenCommanderRequested = OpenCommander;
 
         _fileIndex.StatusChanged += status =>
             Dispatcher.BeginInvoke(() => _viewModel.Status = status);
@@ -173,6 +176,17 @@ public partial class App : System.Windows.Application
     {
         if (!string.IsNullOrEmpty(_pendingUpdateUrl))
             UpdateService.OpenInBrowser(_pendingUpdateUrl);
+    }
+
+    private void OpenCommander(string? path)
+    {
+        if (_commanderWindow is not { IsLoaded: true })
+        {
+            _commanderWindow = new M2CommanderWindow { Icon = _windowIcon };
+            _commanderWindow.Closed += (_, _) => _commanderWindow = null;
+        }
+
+        _commanderWindow.ShowAt(path);
     }
 
     private void OpenSettings()

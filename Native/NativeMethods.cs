@@ -88,6 +88,33 @@ internal static class NativeMethods
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
 
+    // --- Shell file operations: used by M2_Commander for copy / move / delete (to Recycle Bin).
+    //     SHFileOperation shows the familiar shell progress and confirmation dialogs. ---
+    public const uint FO_MOVE = 0x0001;
+    public const uint FO_COPY = 0x0002;
+    public const uint FO_DELETE = 0x0003;
+    public const uint FO_RENAME = 0x0004;
+
+    public const ushort FOF_ALLOWUNDO = 0x0040;   // send deletions to the Recycle Bin
+    public const ushort FOF_NOCONFIRMMKDIR = 0x0200;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        public string pFrom;
+        public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        public string? lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
     public const int GWL_EXSTYLE = -20;
     public const int WS_EX_TOOLWINDOW = 0x00000080;
     public const int WS_EX_NOACTIVATE = 0x08000000;

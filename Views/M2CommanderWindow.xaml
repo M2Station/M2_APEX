@@ -1,0 +1,307 @@
+<Window x:Class="Listly.Views.M2CommanderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:b="clr-namespace:Listly.Behaviors"
+        Title="M2_Commander"
+        Width="1040"
+        Height="660"
+        MinWidth="720"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI"
+        Background="{DynamicResource ThemeSolidBackgroundBrush}"
+        TextOptions.TextFormattingMode="Ideal"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <!-- One list row: [glyph + name] | size | date -->
+        <Style x:Key="CommanderItemStyle" TargetType="ListBoxItem">
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                Padding="6,2"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeSelectedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="CommanderRowTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="132" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe MDL2 Assets"
+                               Text="{Binding Glyph}"
+                               FontSize="14"
+                               Width="22"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource ThemeAccentBrush}" />
+                    <TextBlock x:Name="NameText"
+                               Text="{Binding Name}"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource ThemeTextBrush}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SizeText}"
+                           FontFamily="Consolas"
+                           FontSize="12.5"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"
+                           Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                <TextBlock Grid.Column="2"
+                           Text="{Binding DateText}"
+                           FontFamily="Consolas"
+                           FontSize="12.5"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThemeSubtleBrush}" />
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsFolder}" Value="True">
+                    <Setter TargetName="NameText" Property="FontWeight" Value="SemiBold" />
+                    <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Function-key bar button -->
+        <Style x:Key="FnButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="8,6" Margin="1,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeButtonHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Panes -->
+        <Grid Grid.Row="0" Margin="8,8,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left pane -->
+            <Border x:Name="LeftPane"
+                    Grid.Column="0"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Background="{DynamicResource ThemePanelBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border x:Name="LeftHeaderBar"
+                            Grid.Row="0"
+                            Background="{DynamicResource ThemeButtonBrush}"
+                            CornerRadius="5,5,0,0">
+                        <TextBlock x:Name="LeftPath"
+                                   Text="…"
+                                   Margin="10,6"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource ThemeTextBrush}" />
+                    </Border>
+
+                    <Grid Grid.Row="1" Margin="6,4,6,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="132" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{b:Loc commander.colName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="1" Text="{b:Loc commander.colSize}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,10,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="2" Text="{b:Loc commander.colDate}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </Grid>
+
+                    <ListBox x:Name="LeftList"
+                             Grid.Row="2"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="2,2,2,6"
+                             ItemContainerStyle="{StaticResource CommanderItemStyle}"
+                             ItemTemplate="{StaticResource CommanderRowTemplate}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             HorizontalContentAlignment="Stretch" />
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" />
+
+            <!-- Right pane -->
+            <Border x:Name="RightPane"
+                    Grid.Column="2"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Background="{DynamicResource ThemePanelBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border x:Name="RightHeaderBar"
+                            Grid.Row="0"
+                            Background="{DynamicResource ThemeButtonBrush}"
+                            CornerRadius="5,5,0,0">
+                        <TextBlock x:Name="RightPath"
+                                   Text="…"
+                                   Margin="10,6"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource ThemeTextBrush}" />
+                    </Border>
+
+                    <Grid Grid.Row="1" Margin="6,4,6,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="132" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{b:Loc commander.colName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="1" Text="{b:Loc commander.colSize}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,10,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="2" Text="{b:Loc commander.colDate}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </Grid>
+
+                    <ListBox x:Name="RightList"
+                             Grid.Row="2"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="2,2,2,6"
+                             ItemContainerStyle="{StaticResource CommanderItemStyle}"
+                             ItemTemplate="{StaticResource CommanderRowTemplate}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             HorizontalContentAlignment="Stretch" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status line -->
+        <Border Grid.Row="1" Background="{DynamicResource ThemePanelBrush}" Margin="8,0">
+            <TextBlock x:Name="StatusText"
+                       Margin="12,5"
+                       FontSize="12"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+        </Border>
+
+        <!-- Function-key bar -->
+        <Border Grid.Row="2" Background="{DynamicResource ThemeSolidBackgroundBrush}" Padding="6,6,6,8">
+            <UniformGrid Rows="1" Columns="7">
+                <Button x:Name="ViewButton" Style="{StaticResource FnButtonStyle}" Click="OnViewClick">
+                    <TextBlock><Run Text="F3 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.view}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="EditButton" Style="{StaticResource FnButtonStyle}" Click="OnEditClick">
+                    <TextBlock><Run Text="F4 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.edit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="CopyButton" Style="{StaticResource FnButtonStyle}" Click="OnCopyClick">
+                    <TextBlock><Run Text="F5 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.copy}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="MoveButton" Style="{StaticResource FnButtonStyle}" Click="OnMoveClick">
+                    <TextBlock><Run Text="F6 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.move}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="MkdirButton" Style="{StaticResource FnButtonStyle}" Click="OnMkdirClick">
+                    <TextBlock><Run Text="F7 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.mkdir}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="DeleteButton" Style="{StaticResource FnButtonStyle}" Click="OnDeleteClick">
+                    <TextBlock><Run Text="F8 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.delete}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+                <Button x:Name="QuitButton" Style="{StaticResource FnButtonStyle}" Click="OnQuitClick">
+                    <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                </Button>
+            </UniformGrid>
+        </Border>
+
+        <!-- Modal prompt overlay (MkDir / Rename) -->
+        <Grid x:Name="PromptOverlay"
+              Grid.RowSpan="3"
+              Background="#99000000"
+              Visibility="Collapsed">
+            <Border Width="420"
+                    Background="{DynamicResource ThemeCardBrush}"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="#000000" />
+                </Border.Effect>
+                <StackPanel Margin="18">
+                    <TextBlock x:Name="PromptTitle"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,10"
+                               Foreground="{DynamicResource ThemeTextBrush}" />
+                    <TextBox x:Name="PromptBox"
+                             FontSize="14"
+                             Padding="8,6"
+                             Background="{DynamicResource ThemeInputBrush}"
+                             Foreground="{DynamicResource ThemeTextBrush}"
+                             CaretBrush="{DynamicResource ThemeAccentBrush}"
+                             BorderBrush="{DynamicResource ThemeBorderBrush}"
+                             BorderThickness="1"
+                             KeyDown="OnPromptKeyDown" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                        <Button Content="{b:Loc commander.ok}" MinWidth="88" Padding="10,6" Margin="0,0,8,0" Click="OnPromptOkClick" />
+                        <Button Content="{b:Loc commander.cancel}" MinWidth="88" Padding="10,6" Click="OnPromptCancelClick" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
