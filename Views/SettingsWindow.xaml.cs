@@ -35,7 +35,10 @@ public partial class SettingsWindow : Window
 
         IndexStatus.Text = Loc.T("index.count", _fileIndex.Count.ToString("N0"));
         CreditLogo.Data = Assets.M2Logo.Geometry;
+        HeaderLogo.Data = Assets.M2Logo.Geometry;
+        HeaderVersion.Text = $"v{UpdateService.CurrentVersion}";
         CrashLogPathText.Text = CrashLog.Folder;
+        UpdateTitle();
     }
 
     private void LoadFromSettings()
@@ -186,7 +189,11 @@ public partial class SettingsWindow : Window
 
         // Live preview across every open window; persisted only on Save.
         Loc.Current = Loc.Languages[LanguageBox.SelectedIndex].Id;
+        UpdateTitle();
     }
+
+    private void UpdateTitle() =>
+        Title = $"{Loc.T("settings.title")}  v{UpdateService.CurrentVersion}";
 
     private int IndexOfLanguage(string id)
     {

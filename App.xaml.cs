@@ -34,6 +34,16 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // One-off tool: export the app icon to a .ico file, then quit.
+        // (Used to (re)generate Assets\M2Logo.ico for the executable icon.)
+        if (e.Args is ["--export-icon", var iconPath, ..])
+        {
+            try { AppIcon.SaveIconFile(iconPath); }
+            catch (Exception ex) { CrashLog.Log(ex, "export-icon"); }
+            Shutdown();
+            return;
+        }
+
         DispatcherUnhandledException += (_, args) =>
         {
             LogCrash(args.Exception);

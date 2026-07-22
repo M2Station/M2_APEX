@@ -173,6 +173,15 @@
 
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
             <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <Path x:Name="HeaderLogo" Width="30" Height="30" Stretch="Uniform"
+                          VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
+                    <TextBlock Text="APEX" VerticalAlignment="Center" Margin="10,0,0,0"
+                               FontSize="23" FontWeight="Bold" Foreground="{DynamicResource ThemeTextBrush}" />
+                    <TextBlock x:Name="HeaderVersion" VerticalAlignment="Bottom" Margin="8,0,0,4"
+                               FontSize="12" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                </StackPanel>
+
                 <TextBlock Text="{b:Loc settings.appearance}" Style="{StaticResource Header}" Margin="0,0,0,6" />
                 <TextBlock Text="{b:Loc settings.theme}" Margin="0,2,0,5" Foreground="{DynamicResource ThemeSubtleBrush}" />
                 <ComboBox x:Name="ThemeBox"

@@ -1,6 +1,7 @@
 name: Release
 
-# Publish a GitHub Release with self-contained single-file EXEs for x64 and ARM64.
+# Publish a GitHub Release for x64 and ARM64, each with a portable self-contained single-file
+# EXE and an Inno Setup installer (Setup-*.exe).
 # Triggered by pushing a version tag (e.g. v0.0.1), or manually via the Actions tab.
 on:
   push:
@@ -53,7 +54,7 @@ jobs:
             -p:Version=${{ steps.ver.outputs.version }} `
             -o publish/${{ matrix.rid }}
 
-      - name: Stage artifact
+      - name: Stage portable EXE
         shell: pwsh
         run: |
           $ver = '${{ steps.ver.outputs.version }}'
@@ -61,7 +62,20 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "publish/$rid/M2_APEX.exe" "dist/M2_APEX-$ver-$rid.exe"
 
-      - name: Upload artifact
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.ver.outputs.version }}'
+          $rid = '${{ matrix.rid }}'
+          $arch = $rid -replace '^win-', ''
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "/DAppVersion=$ver" "/DArch=$arch" "/DSourceExe=$PWD\publish\$rid\M2_APEX.exe" "/DOutDir=$PWD\dist" "installer\M2_APEX.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}

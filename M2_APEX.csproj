@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\M2Logo.ico</ApplicationIcon>
     <AssemblyName>M2_APEX</AssemblyName>
     <RootNamespace>Listly</RootNamespace>
     <Version>0.0.1</Version>
