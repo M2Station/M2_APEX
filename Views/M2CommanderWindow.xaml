@@ -14,80 +14,6 @@
         UseLayoutRounding="True">
 
     <Window.Resources>
-        <!-- One list row: [glyph + name] | size | date -->
-        <Style x:Key="CommanderItemStyle" TargetType="ListBoxItem">
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bd"
-                                Background="Transparent"
-                                Padding="6,2"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeSelectedBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <DataTemplate x:Key="CommanderRowTemplate">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="132" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock FontFamily="Segoe MDL2 Assets"
-                               Text="{Binding Glyph}"
-                               FontSize="14"
-                               Width="22"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource ThemeAccentBrush}" />
-                    <TextBlock x:Name="NameText"
-                               Text="{Binding Name}"
-                               FontSize="13"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{DynamicResource ThemeTextBrush}" />
-                </StackPanel>
-
-                <TextBlock Grid.Column="1"
-                           Text="{Binding SizeText}"
-                           FontFamily="Consolas"
-                           FontSize="12.5"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Center"
-                           Margin="0,0,10,0"
-                           Foreground="{DynamicResource ThemeSubtleBrush}" />
-
-                <TextBlock Grid.Column="2"
-                           Text="{Binding DateText}"
-                           FontFamily="Consolas"
-                           FontSize="12.5"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource ThemeSubtleBrush}" />
-            </Grid>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsFolder}" Value="True">
-                    <Setter TargetName="NameText" Property="FontWeight" Value="SemiBold" />
-                    <Setter TargetName="NameText" Property="Foreground" Value="{DynamicResource ThemeAccentBrush}" />
-                </DataTrigger>
-            </DataTemplate.Triggers>
-        </DataTemplate>
-
         <!-- Function-key bar button -->
         <Style x:Key="FnButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
@@ -110,124 +36,37 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootGrid">
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1" />
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Panes -->
+        <!-- Panes: 2-4 equal-width panes rebuilt at runtime, with a + to add one -->
         <Grid Grid.Row="0" Margin="8,8,8,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left pane -->
-            <Border x:Name="LeftPane"
-                    Grid.Column="0"
-                    BorderBrush="{DynamicResource ThemeBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Background="{DynamicResource ThemePanelBrush}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <Grid x:Name="PaneHost" Grid.Column="0" />
 
-                    <Border x:Name="LeftHeaderBar"
-                            Grid.Row="0"
-                            Background="{DynamicResource ThemeButtonBrush}"
-                            CornerRadius="5,5,0,0">
-                        <TextBlock x:Name="LeftPath"
-                                   Text="…"
-                                   Margin="10,6"
-                                   FontSize="12.5"
-                                   FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource ThemeTextBrush}" />
-                    </Border>
-
-                    <Grid Grid.Row="1" Margin="6,4,6,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="96" />
-                            <ColumnDefinition Width="132" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{b:Loc commander.colName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                        <TextBlock Grid.Column="1" Text="{b:Loc commander.colSize}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,10,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                        <TextBlock Grid.Column="2" Text="{b:Loc commander.colDate}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                    </Grid>
-
-                    <ListBox x:Name="LeftList"
-                             Grid.Row="2"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="2,2,2,6"
-                             ItemContainerStyle="{StaticResource CommanderItemStyle}"
-                             ItemTemplate="{StaticResource CommanderRowTemplate}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             HorizontalContentAlignment="Stretch" />
-                </Grid>
-            </Border>
-
-            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" />
-
-            <!-- Right pane -->
-            <Border x:Name="RightPane"
-                    Grid.Column="2"
-                    BorderBrush="{DynamicResource ThemeBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Background="{DynamicResource ThemePanelBrush}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Border x:Name="RightHeaderBar"
-                            Grid.Row="0"
-                            Background="{DynamicResource ThemeButtonBrush}"
-                            CornerRadius="5,5,0,0">
-                        <TextBlock x:Name="RightPath"
-                                   Text="…"
-                                   Margin="10,6"
-                                   FontSize="12.5"
-                                   FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource ThemeTextBrush}" />
-                    </Border>
-
-                    <Grid Grid.Row="1" Margin="6,4,6,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="96" />
-                            <ColumnDefinition Width="132" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="{b:Loc commander.colName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                        <TextBlock Grid.Column="1" Text="{b:Loc commander.colSize}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,10,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                        <TextBlock Grid.Column="2" Text="{b:Loc commander.colDate}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                    </Grid>
-
-                    <ListBox x:Name="RightList"
-                             Grid.Row="2"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="2,2,2,6"
-                             ItemContainerStyle="{StaticResource CommanderItemStyle}"
-                             ItemTemplate="{StaticResource CommanderRowTemplate}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             HorizontalContentAlignment="Stretch" />
-                </Grid>
-            </Border>
+            <Button x:Name="AddPaneButton"
+                    Grid.Column="1"
+                    Style="{StaticResource FnButtonStyle}"
+                    Width="30"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Stretch"
+                    Click="OnAddPaneClick"
+                    ToolTip="{b:Loc commander.addPane}">
+                <TextBlock Text="+" FontSize="20" FontWeight="Bold"
+                           Foreground="{DynamicResource ThemeAccentBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Button>
         </Grid>
 
         <!-- Status line -->

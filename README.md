@@ -60,7 +60,7 @@ Branding: the tray icon, window icon and search bar all use the **M2** logo (dra
 > Quick Switch only acts while the file list has focus; typing in the address bar, search box, or a rename (F2)
 > text field is completely unaffected.
 
-### M2_Commander (dual-pane file manager)
+### M2_Commander (multi-pane file manager)
 
 Open with `Ctrl` + `` ` `` (backtick) from any search surface. Fully keyboard-driven:
 
@@ -83,6 +83,10 @@ Open with `Ctrl` + `` ` `` (backtick) from any search surface. Fully keyboard-dr
 | `F11` | Custom command settings |
 | `F12` | All keyboard shortcuts |
 | `F10` / `Esc` | Quit |
+
+> Click **+** at the right to open up to **4 panes**; **×** on a pane header closes it (minimum 2). The window
+> remembers its size, position, pane count and each pane's folder, and scales to the screen. Move and swap apply
+> to a two-pane layout.
 
 ---
 

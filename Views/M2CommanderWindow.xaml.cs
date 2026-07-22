@@ -26,10 +26,15 @@ namespace Listly.Views;
 /// </summary>
 public partial class M2CommanderWindow : Window
 {
-    private readonly Pane _left;
-    private readonly Pane _right;
-    private Pane _active;
+    private const int MinPanes = 2;
+    private const int MaxPanes = 4;
+
+    private readonly List<Pane> _panes = new();
+    private Pane _active = null!;
     private Action<string>? _promptAction;
+
+    // UI zoom factor derived from the screen resolution (see ApplyWindowChrome).
+    private double _uiScale = 1.0;
 
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
@@ -75,32 +80,13 @@ public partial class M2CommanderWindow : Window
         _fileIndex = fileIndex;
         InitializeComponent();
 
-        _left = new Pane { List = LeftList, Header = LeftPath, PaneBorder = LeftPane, HeaderBar = LeftHeaderBar };
-        _right = new Pane { List = RightList, Header = RightPath, PaneBorder = RightPane, HeaderBar = RightHeaderBar };
-        _active = _left;
-
-        LeftList.ItemsSource = _left.Entries;
-        RightList.ItemsSource = _right.Entries;
-
-        LeftList.PreviewMouseDown += (_, _) => SetActive(_left);
-        RightList.PreviewMouseDown += (_, _) => SetActive(_right);
-        LeftList.PreviewMouseRightButtonUp += OnListRightButtonUp;
-        RightList.PreviewMouseRightButtonUp += OnListRightButtonUp;
-        LeftList.MouseDoubleClick += OnListDoubleClick;
-        RightList.MouseDoubleClick += OnListDoubleClick;
-        LeftList.SelectionChanged += (_, _) => { if (_active == _left) UpdateStatus(); };
-        RightList.SelectionChanged += (_, _) => { if (_active == _right) UpdateStatus(); };
-
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewTextInput += OnPreviewTextInput;
         PreviewMouseDown += OnWindowMouseDown;
 
+        ApplyWindowChrome();
         RefreshCommandBar();
-
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        NavigateTo(_left, home, null, pushHistory: false);
-        NavigateTo(_right, home, null, pushHistory: false);
-        UpdateActiveVisual();
+        InitPanes();
     }
 
     /// <summary>Shows the window focused on <paramref name="path"/> (a file selects it; a folder opens it).</summary>
@@ -119,6 +105,198 @@ public partial class M2CommanderWindow : Window
         Activate();
         FocusSelected(_active);
         SwitchToEnglishInput();
+    }
+
+    // --- Panes / responsive window ------------------------------------------
+
+    /// <summary>
+    /// Sizes the window to ~80% of the work area (or the remembered bounds) and applies a gentle
+    /// resolution-based zoom to the whole UI so fonts and layout scale up on large / high-res screens.
+    /// </summary>
+    private void ApplyWindowChrome()
+    {
+        var work = SystemParameters.WorkArea;
+
+        _uiScale = Math.Clamp(work.Height / 1080.0, 1.0, 1.25);
+        RootScale.ScaleX = RootScale.ScaleY = _uiScale;
+        MinWidth = 720 * _uiScale;
+        MinHeight = 420 * _uiScale;
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+
+        if (_settings.CommanderWindowWidth is double w && w > 200 &&
+            _settings.CommanderWindowHeight is double h && h > 200)
+        {
+            Width = w;
+            Height = h;
+            Left = _settings.CommanderWindowLeft ?? work.Left + (work.Width - w) / 2;
+            Top = _settings.CommanderWindowTop ?? work.Top + (work.Height - h) / 2;
+        }
+        else
+        {
+            Width = Math.Round(work.Width * 0.8);
+            Height = Math.Round(work.Height * 0.8);
+            Left = work.Left + (work.Width - Width) / 2;
+            Top = work.Top + (work.Height - Height) / 2;
+        }
+
+        // Keep the window on-screen if the saved bounds came from a different display.
+        Width = Math.Min(Width, work.Width);
+        Height = Math.Min(Height, work.Height);
+        Left = Math.Max(work.Left, Math.Min(Left, work.Right - Width));
+        Top = Math.Max(work.Top, Math.Min(Top, work.Bottom - Height));
+    }
+
+    /// <summary>Builds the saved number of panes (2-4) at their remembered folders.</summary>
+    private void InitPanes()
+    {
+        int count = Math.Clamp(_settings.CommanderPaneCount, MinPanes, MaxPanes);
+        var paths = _settings.CommanderPanePaths ?? new List<string>();
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        for (int i = 0; i < count; i++)
+            _panes.Add(CreatePane());
+
+        RebuildPaneLayout();
+        _active = _panes[0];
+
+        for (int i = 0; i < _panes.Count; i++)
+        {
+            string dir = i < paths.Count && IsUsablePath(paths[i]) ? paths[i] : home;
+            NavigateTo(_panes[i], dir, null, pushHistory: false);
+        }
+
+        UpdateActiveVisual();
+        UpdatePaneChrome();
+    }
+
+    /// <summary>Creates one pane (its visual + wiring) without placing it in the layout yet.</summary>
+    private Pane CreatePane()
+    {
+        var view = new CommanderPane();
+        var pane = new Pane { View = view };
+
+        view.List.ItemsSource = pane.Entries;
+        view.List.PreviewMouseDown += (_, _) => SetActive(pane);
+        view.List.PreviewMouseRightButtonUp += OnListRightButtonUp;
+        view.List.MouseDoubleClick += OnListDoubleClick;
+        view.List.SelectionChanged += (_, _) => { if (_active == pane) UpdateStatus(); };
+        view.CloseButton.Click += (_, _) => ClosePane(pane);
+
+        return pane;
+    }
+
+    /// <summary>Lays the current panes out as equal-width columns separated by drag splitters.</summary>
+    private void RebuildPaneLayout()
+    {
+        PaneHost.Children.Clear();
+        PaneHost.ColumnDefinitions.Clear();
+
+        for (int i = 0; i < _panes.Count; i++)
+        {
+            if (i > 0)
+            {
+                PaneHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+                var splitter = new GridSplitter
+                {
+                    Width = 8,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                    Background = System.Windows.Media.Brushes.Transparent
+                };
+                Grid.SetColumn(splitter, PaneHost.ColumnDefinitions.Count - 1);
+                PaneHost.Children.Add(splitter);
+            }
+
+            PaneHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(_panes[i].View, PaneHost.ColumnDefinitions.Count - 1);
+            PaneHost.Children.Add(_panes[i].View);
+        }
+    }
+
+    private void OnAddPaneClick(object sender, RoutedEventArgs e)
+    {
+        if (_panes.Count >= MaxPanes)
+            return;
+
+        var pane = CreatePane();
+        _panes.Add(pane);
+        RebuildPaneLayout();
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        NavigateTo(pane, IsUsablePath(_active.Dir) ? _active.Dir : home, null, pushHistory: false);
+
+        SetActive(pane);
+        UpdatePaneChrome();
+        FocusSelected(pane);
+    }
+
+    private void ClosePane(Pane pane)
+    {
+        if (_panes.Count <= MinPanes)
+            return;
+
+        int idx = _panes.IndexOf(pane);
+        _panes.Remove(pane);
+
+        if (_active == pane)
+            _active = _panes[Math.Min(idx, _panes.Count - 1)];
+
+        RebuildPaneLayout();
+        UpdateActiveVisual();
+        UpdatePaneChrome();
+        UpdateStatus();
+        FocusSelected(_active);
+    }
+
+    /// <summary>Shows the close (×) button once past the minimum, and hides + at the maximum.</summary>
+    private void UpdatePaneChrome()
+    {
+        bool canClose = _panes.Count > MinPanes;
+        foreach (var pane in _panes)
+            pane.CloseButton.Visibility = canClose ? Visibility.Visible : Visibility.Collapsed;
+
+        AddPaneButton.Visibility = _panes.Count < MaxPanes ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private Pane PaneForList(object list) => _panes.FirstOrDefault(p => ReferenceEquals(p.List, list)) ?? _active;
+
+    private Pane NextPane(int dir)
+    {
+        int i = (_panes.IndexOf(_active) + dir + _panes.Count) % _panes.Count;
+        return _panes[i];
+    }
+
+    private void FocusAdjacentPane(int dir)
+    {
+        int i = Math.Clamp(_panes.IndexOf(_active) + dir, 0, _panes.Count - 1);
+        SetActive(_panes[i]);
+        FocusSelected(_active);
+    }
+
+    private static bool IsUsablePath(string? path) =>
+        path == DrivesView || (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path));
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        SaveCommanderState();
+        base.OnClosing(e);
+    }
+
+    private void SaveCommanderState()
+    {
+        var b = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+        if (!b.IsEmpty)
+        {
+            _settings.CommanderWindowLeft = b.Left;
+            _settings.CommanderWindowTop = b.Top;
+            _settings.CommanderWindowWidth = b.Width;
+            _settings.CommanderWindowHeight = b.Height;
+        }
+
+        _settings.CommanderPaneCount = _panes.Count;
+        _settings.CommanderPanePaths = _panes.Select(p => p.Dir).ToList();
+        _settings.Save();
     }
 
     // --- Navigation ---------------------------------------------------------
@@ -298,7 +476,7 @@ public partial class M2CommanderWindow : Window
     private void MoveSelected()
     {
         var sel = ActiveSelected();
-        if (sel is null || sel.IsParent)
+        if (sel is null || sel.IsParent || _panes.Count != 2)
             return;
 
         ShellOp(NativeMethods.FO_MOVE, sel.Path, Other(_active).Dir, 0);
@@ -486,19 +664,22 @@ public partial class M2CommanderWindow : Window
 
     private void SwapPanes()
     {
-        var l = _left.Dir;
-        var r = _right.Dir;
+        if (_panes.Count != 2)
+            return;
+
+        var l = _panes[0].Dir;
+        var r = _panes[1].Dir;
         if (string.IsNullOrEmpty(l) || string.IsNullOrEmpty(r))
             return;
 
-        NavigateTo(_left, r, null, pushHistory: true);
-        NavigateTo(_right, l, null, pushHistory: true);
+        NavigateTo(_panes[0], r, null, pushHistory: true);
+        NavigateTo(_panes[1], l, null, pushHistory: true);
     }
 
     private void RefreshBoth()
     {
-        RefreshPane(_left);
-        RefreshPane(_right);
+        foreach (var pane in _panes)
+            RefreshPane(pane);
     }
 
     private void RefreshPane(Pane pane)
@@ -704,7 +885,8 @@ public partial class M2CommanderWindow : Window
         UpdateStatus();
     }
 
-    private Pane Other(Pane pane) => pane == _left ? _right : _left;
+    private Pane Other(Pane pane) =>
+        _panes.Count == 2 ? (ReferenceEquals(_panes[0], pane) ? _panes[1] : _panes[0]) : pane;
 
     private CommanderEntry? ActiveSelected() => _active.List.SelectedItem as CommanderEntry;
 
@@ -729,8 +911,8 @@ public partial class M2CommanderWindow : Window
 
     private void UpdateActiveVisual()
     {
-        ApplyPaneActive(_left, _active == _left);
-        ApplyPaneActive(_right, _active == _right);
+        foreach (var pane in _panes)
+            ApplyPaneActive(pane, ReferenceEquals(pane, _active));
     }
 
     private void ApplyPaneActive(Pane pane, bool active)
@@ -823,7 +1005,7 @@ public partial class M2CommanderWindow : Window
     private void OnListRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         var list = (ListBox)sender;
-        SetActive(list == LeftList ? _left : _right);
+        SetActive(PaneForList(list));
 
         // Select the row under the cursor so the action targets it; a right-click on empty space
         // clears the selection, leaving only paste / new-folder / new-file enabled.
@@ -855,11 +1037,12 @@ public partial class M2CommanderWindow : Window
         bool hasItem = sel is { IsParent: false };
         bool isFolder = sel is { IsParent: false, IsFolder: true };
         bool canPaste = _clipSource is not null && (File.Exists(_clipSource) || Directory.Exists(_clipSource));
+        bool canMove = hasItem && _panes.Count == 2;
 
         var menu = new ContextMenu();
         menu.Items.Add(ActionItem(Loc.T("commander.menu.copy"), "Ctrl+C", hasItem, CopySelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.paste"), "Ctrl+V", canPaste, PasteClipboard));
-        menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, hasItem, MoveSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, canMove, MoveSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.copyPath"), string.Empty, hasItem, CopyPathSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.delete"), "Del", hasItem, DeleteSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.fastDelete"), "Shift+Del", isFolder, FastDeleteFolderSelected));
@@ -1110,7 +1293,7 @@ public partial class M2CommanderWindow : Window
 
     private void OnListDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        var pane = sender == LeftList ? _left : _right;
+        var pane = PaneForList(sender);
         SetActive(pane);
         var sel = ActiveSelected();
         if (sel != null)
@@ -1169,13 +1352,11 @@ public partial class M2CommanderWindow : Window
             switch (key)
             {
                 case Key.Left:
-                    SetActive(_left);
-                    FocusSelected(_active);
+                    FocusAdjacentPane(-1);
                     e.Handled = true;
                     return;
                 case Key.Right:
-                    SetActive(_right);
-                    FocusSelected(_active);
+                    FocusAdjacentPane(+1);
                     e.Handled = true;
                     return;
                 case Key.Up:
@@ -1196,7 +1377,7 @@ public partial class M2CommanderWindow : Window
         switch (key)
         {
             case Key.Tab:
-                SetActive(Other(_active));
+                SetActive(NextPane(1));
                 FocusSelected(_active);
                 e.Handled = true;
                 break;
@@ -1479,10 +1660,12 @@ public partial class M2CommanderWindow : Window
 
     private sealed class Pane
     {
-        public required ListBox List { get; init; }
-        public required TextBlock Header { get; init; }
-        public required Border PaneBorder { get; init; }
-        public required Border HeaderBar { get; init; }
+        public required CommanderPane View { get; init; }
+        public ListBox List => View.List;
+        public TextBlock Header => View.PathText;
+        public Border PaneBorder => View.Root;
+        public Border HeaderBar => View.HeaderBar;
+        public System.Windows.Controls.Button CloseButton => View.CloseButton;
         public ObservableCollection<CommanderEntry> Entries { get; } = new();
         public string Dir { get; set; } = string.Empty;
         public Stack<string> Back { get; } = new();

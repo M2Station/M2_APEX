@@ -90,6 +90,18 @@ public sealed class AppSettings
     /// </summary>
     public bool CommanderForceEnglishInput { get; set; } = true;
 
+    /// <summary>Number of panes M2_Commander opens with (2-4).</summary>
+    public int CommanderPaneCount { get; set; } = 2;
+
+    /// <summary>Each pane's last folder, in order; restored on the next open.</summary>
+    public List<string> CommanderPanePaths { get; set; } = new();
+
+    /// <summary>Remembered M2_Commander window bounds (null = a screen-relative default is used).</summary>
+    public double? CommanderWindowLeft { get; set; }
+    public double? CommanderWindowTop { get; set; }
+    public double? CommanderWindowWidth { get; set; }
+    public double? CommanderWindowHeight { get; set; }
+
     private static string ConfigDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
 
