@@ -19,7 +19,7 @@ public partial class SearchWindow : Window
     private readonly LaunchService _launch;
     private readonly AppSettings _settings;
 
-    /// <summary>Raised on Ctrl+E; argument is the selected item's path (or null for none/web/command).</summary>
+    /// <summary>Raised on Ctrl+` ; argument is the selected item's path (or null for none/web/command).</summary>
     public event Action<string?>? OpenCommanderRequested;
 
     public SearchWindow(SearchViewModel viewModel, LaunchService launch, AppSettings settings)
@@ -155,7 +155,7 @@ public partial class SearchWindow : Window
                 e.Handled = true;
                 break;
 
-            case Key.E when Keyboard.Modifiers == ModifierKeys.Control:
+            case Key.OemTilde when Keyboard.Modifiers == ModifierKeys.Control:
                 RequestOpenCommander();
                 e.Handled = true;
                 break;

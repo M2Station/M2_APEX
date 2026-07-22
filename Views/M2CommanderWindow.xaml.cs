@@ -18,7 +18,7 @@ namespace Listly.Views;
 
 /// <summary>
 /// M2_Commander — a Norton Commander / muCommander style dual-pane file manager,
-/// opened with Ctrl+E from the search surfaces. Keyboard-driven: Tab switches panes,
+/// opened with Ctrl+` from the search surfaces. Keyboard-driven: Tab switches panes,
 /// Enter opens, Backspace goes up, Alt+←/→ navigate history, and F12 lists all shortcuts.
 /// The file-operation methods (copy/move/delete/mkdir/rename) are kept but currently unbound.
 /// </summary>
@@ -41,7 +41,7 @@ public partial class M2CommanderWindow : Window
         ("Alt+→", "commander.k.forward"),
         ("Ctrl+U", "commander.k.swap"),
         ("Ctrl+R", "commander.k.refresh"),
-        ("Ctrl+E", "commander.k.openApp"),
+        ("Ctrl+`", "commander.k.openApp"),
         ("F12", "commander.k.help"),
         ("F10 / Esc", "commander.k.quit"),
     };

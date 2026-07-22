@@ -19,7 +19,7 @@ public sealed class QuickSwitchService
     private const int VkEscape = 0x1B;
     private const int VkUp = 0x26;
     private const int VkDown = 0x28;
-    private const int VkE = 0x45;
+    private const int VkOemTilde = 0xC0;
 
     private readonly AppSettings _settings;
     private readonly QuickSwitchBar _bar;
@@ -56,7 +56,7 @@ public sealed class QuickSwitchService
     /// </summary>
     public Func<bool>? Suppressed { get; set; }
 
-    /// <summary>Invoked (on the UI thread) when Ctrl+E is pressed while the Quick Switch bar is open.</summary>
+    /// <summary>Invoked (on the UI thread) when Ctrl+` is pressed while the Quick Switch bar is open.</summary>
     public Action<string?>? OpenCommanderRequested { get; set; }
 
     /// <summary>Fast key filter installed into <see cref="HotkeyService"/>. Returns true to swallow.</summary>
@@ -90,8 +90,8 @@ public sealed class QuickSwitchService
                 return false;
             }
 
-            // Ctrl+E: hand the highlighted item (or the current folder) to M2_Commander.
-            if (mods.Ctrl && !mods.Alt && !mods.Win && vk == VkE)
+            // Ctrl+` : hand the highlighted item (or the current folder) to M2_Commander.
+            if (mods.Ctrl && !mods.Alt && !mods.Win && vk == VkOemTilde)
             {
                 Post(() =>
                 {
