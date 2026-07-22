@@ -33,7 +33,7 @@
                 <TextBlock VerticalAlignment="Center"
                            FontSize="14"
                            Foreground="{DynamicResource ThemeTextBrush}">
-                    <Run Text="Ctrl+`" FontWeight="Bold" Foreground="{DynamicResource ThemeAccentBrush}" /><Run Text="  —  M2_Commander" FontWeight="SemiBold" />
+                    <Run Text="Ctrl+`" FontWeight="Bold" Foreground="{DynamicResource ThemeAccentBrush}" /><Run Text="  —  M2 Commander" FontWeight="SemiBold" />
                 </TextBlock>
                 <Button HorizontalAlignment="Right"
                         VerticalAlignment="Center"

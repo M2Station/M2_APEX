@@ -4,8 +4,8 @@
 
     "search.placeholder": "Search files, apps, commands, and the web…",
     "search.hint": "↑↓ navigate   ↵ open   Ctrl+↵ folder   Esc close",
-    "search.commanderHint": "Ctrl+` M2_Commander",
-    "search.commanderHintTip": "Open M2_Commander (Ctrl+`) — click to see how",
+    "search.commanderHint": "Ctrl+` M2 Commander",
+    "search.commanderHintTip": "Open M2 Commander (Ctrl+`) — click to see how",
     "search.gifClose": "Press Esc or click anywhere to close",
 
     "kind.app": "App",
@@ -25,7 +25,7 @@
     "index.count": "{0} items indexed",
 
     "tray.tooltip": "M2_APEX — double-tap Ctrl to search",
-    "tray.launchCommander": "Launch M2_Commander",
+    "tray.launchCommander": "Launch M2 Commander",
     "tray.openSearch": "Open search",
     "tray.rebuildIndex": "Rebuild index",
     "tray.settings": "Settings…",
@@ -116,7 +116,7 @@
     "commander.cmd.autoDetect": "Auto detect",
     "commander.cmd.autoResult": "Auto-detected {0} of {1} tool(s).",
     "commander.cmd.noPath": "\"{0}\" has no program path yet. Set it in F11 settings.",
-    "commander.cmd.forceEnglish": "Switch input to English (EN) when M2_Commander opens",
+    "commander.cmd.forceEnglish": "Switch input to English (EN) when M2 Commander opens",
     "commander.links.section": "Quick links (shown on the drives view)",
     "commander.links.name": "Name",
     "commander.links.target": "Target (folder / UNC / URL)",
@@ -148,9 +148,9 @@
     "commander.k.actions": "Actions menu (copy / move / delete / new…)",
     "commander.k.paste": "Paste the marked item here",
     "commander.k.commands": "Custom command settings",
-    "commander.k.openApp": "Open M2_Commander (from search / Quick Switch)",
+    "commander.k.openApp": "Open M2 Commander (from search / Quick Switch)",
     "commander.k.help": "Show this help",
-    "commander.k.quit": "Close M2_Commander"
+    "commander.k.quit": "Close M2 Commander"
   },
 
   "zh-TW": {
@@ -158,8 +158,8 @@
 
     "search.placeholder": "搜尋檔案、應用程式、指令與網頁…",
     "search.hint": "↑↓ 移動   ↵ 開啟   Ctrl+↵ 資料夾   Esc 關閉",
-    "search.commanderHint": "Ctrl+` 開啟 M2_Commander",
-    "search.commanderHintTip": "開啟 M2_Commander（Ctrl+`）— 點擊看示範",
+    "search.commanderHint": "Ctrl+` 開啟 M2 Commander",
+    "search.commanderHintTip": "開啟 M2 Commander（Ctrl+`）— 點擊看示範",
     "search.gifClose": "按 Esc 或點任意處關閉",
 
     "kind.app": "應用程式",
@@ -179,7 +179,7 @@
     "index.count": "已索引 {0} 筆",
 
     "tray.tooltip": "M2_APEX — 雙擊 Ctrl 開始搜尋",
-    "tray.launchCommander": "開啟 M2_Commander",
+    "tray.launchCommander": "開啟 M2 Commander",
     "tray.openSearch": "開啟搜尋",
     "tray.rebuildIndex": "重建索引",
     "tray.settings": "設定…",
@@ -260,7 +260,7 @@
     "commander.menu.rename": "重新命名",
     "commander.menu.newFolder": "新建目錄",
     "commander.menu.newFile": "新建 TXT",
-    "commander.cmd.title": "M2_Commander 設定",
+    "commander.cmd.title": "M2 Commander 設定",
     "commander.cmd.section": "自訂快捷指令",
     "commander.cmd.hint": "{path} 會替換為選取的檔案或目錄。程式留空則不顯示該項目。",
     "commander.cmd.label": "名稱",
@@ -270,7 +270,7 @@
     "commander.cmd.autoDetect": "自動偵測",
     "commander.cmd.autoResult": "已自動偵測 {0}/{1} 個工具。",
     "commander.cmd.noPath": "「{0}」尚未設定程式路徑，請在 F11 設定中填入。",
-    "commander.cmd.forceEnglish": "開啟 M2_Commander 時將輸入法切換為英數 (EN)",
+    "commander.cmd.forceEnglish": "開啟 M2 Commander 時將輸入法切換為英數 (EN)",
     "commander.links.section": "快速連結（顯示於磁碟機畫面）",
     "commander.links.name": "名稱",
     "commander.links.target": "目標（資料夾／UNC／網址）",
@@ -302,8 +302,8 @@
     "commander.k.actions": "動作選單（複製／移動／刪除／新增…）",
     "commander.k.paste": "將標記的項目貼到此處",
     "commander.k.commands": "自訂指令設定",
-    "commander.k.openApp": "開啟 M2_Commander（從搜尋 / Quick Switch）",
+    "commander.k.openApp": "開啟 M2 Commander（從搜尋 / Quick Switch）",
     "commander.k.help": "顯示此說明",
-    "commander.k.quit": "關閉 M2_Commander"
+    "commander.k.quit": "關閉 M2 Commander"
   }
 }

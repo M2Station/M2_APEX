@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:b="clr-namespace:Listly.Behaviors"
-        Title="M2_Commander"
+        xmlns:a="clr-namespace:Listly.Assets"
+        Title="M2 Commander"
         Width="1040"
         Height="660"
         MinWidth="720"
@@ -96,9 +97,14 @@
                             <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
                         </Button>
                     </StackPanel>
-                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
-                               FontSize="11.5" Foreground="{DynamicResource ThemeSubtleBrush}"
-                               Text="{b:Loc commander.hint}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Path Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"
+                              Data="{x:Static a:M2Logo.Geometry}"
+                              Fill="{DynamicResource ThemeAccentBrush}" />
+                        <TextBlock Text="Commander" Margin="6,0,0,0" VerticalAlignment="Center"
+                                   FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThemeTextBrush}" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- User-defined launcher buttons (configured with F11) -->
