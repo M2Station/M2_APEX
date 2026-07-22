@@ -41,6 +41,7 @@ public partial class M2CommanderWindow : Window
 
     // Working copy edited by the F11 overlay; committed to _settings only on Save.
     private readonly ObservableCollection<CommanderCommand> _editCommands = new();
+    private readonly ObservableCollection<CommanderLink> _editLinks = new();
 
     // Source of the last COPY, re-used by PASTE (pane-to-pane; no OS clipboard).
     private string? _clipSource;
@@ -388,6 +389,12 @@ public partial class M2CommanderWindow : Window
             return;
         }
 
+        if (entry.IsLink)
+        {
+            OpenLink(pane, entry.Path);
+            return;
+        }
+
         if (entry.IsFolder)
         {
             NavigateTo(pane, entry.Path, null, pushHistory: true);
@@ -402,6 +409,25 @@ public partial class M2CommanderWindow : Window
         try
         {
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Warn(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Opens a quick link: a browsable folder / UNC share is navigated in-pane; anything else
+    /// (a URL, a host, or a file) is handed to the OS — a URL opens in the default browser.
+    /// </summary>
+    private void OpenLink(Pane pane, string target)
+    {
+        try
+        {
+            if (Directory.Exists(target))
+                NavigateTo(pane, target, null, pushHistory: true);
+            else
+                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -699,7 +725,7 @@ public partial class M2CommanderWindow : Window
 
     // --- Data building ------------------------------------------------------
 
-    private static bool TryBuildEntries(string dir, out List<CommanderEntry> entries, out string error)
+    private bool TryBuildEntries(string dir, out List<CommanderEntry> entries, out string error)
     {
         entries = new List<CommanderEntry>();
         error = string.Empty;
@@ -732,6 +758,25 @@ public partial class M2CommanderWindow : Window
                     Glyph = IconGlyph.Drive,
                     SizeText = sizeText,
                     DateText = detail
+                });
+            }
+
+            // User-defined quick links appear after the drives on the "This PC" view.
+            foreach (var link in _settings.CommanderLinks)
+            {
+                var linkName = link.Name?.Trim();
+                var linkTarget = link.Target?.Trim();
+                if (string.IsNullOrEmpty(linkName) || string.IsNullOrEmpty(linkTarget))
+                    continue;
+
+                entries.Add(new CommanderEntry
+                {
+                    Name = linkName,
+                    Path = linkTarget,
+                    IsLink = true,
+                    Glyph = IconGlyph.Web,
+                    SizeText = "<LINK>",
+                    DateText = linkTarget
                 });
             }
 
@@ -1124,14 +1169,45 @@ public partial class M2CommanderWindow : Window
         foreach (var cmd in _settings.CommanderCommands)
             _editCommands.Add(new CommanderCommand { Label = cmd.Label, Path = cmd.Path, Arguments = cmd.Arguments });
 
+        _editLinks.Clear();
+        foreach (var link in _settings.CommanderLinks)
+            _editLinks.Add(new CommanderLink { Name = link.Name, Target = link.Target });
+
         ForceEnglishCheck.IsChecked = _settings.CommanderForceEnglishInput;
         AutoDetectResult.Text = string.Empty;
         CommandEditorList.ItemsSource = _editCommands;
+        LinkEditorList.ItemsSource = _editLinks;
         CommandEditorOverlay.Visibility = Visibility.Visible;
     }
 
     private void OnCommandAddClick(object sender, RoutedEventArgs e) =>
         _editCommands.Add(new CommanderCommand { Arguments = "\"{path}\"" });
+
+    private void OnLinkAddClick(object sender, RoutedEventArgs e) =>
+        _editLinks.Add(new CommanderLink());
+
+    private void OnLinkRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: CommanderLink link })
+            _editLinks.Remove(link);
+    }
+
+    private void OnLinkUpClick(object sender, RoutedEventArgs e) => MoveLink(sender, -1);
+
+    private void OnLinkDownClick(object sender, RoutedEventArgs e) => MoveLink(sender, +1);
+
+    private void MoveLink(object sender, int delta)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: CommanderLink link })
+            return;
+
+        int i = _editLinks.IndexOf(link);
+        int j = i + delta;
+        if (i < 0 || j < 0 || j >= _editLinks.Count)
+            return;
+
+        _editLinks.Move(i, j);
+    }
 
     /// <summary>
     /// F11 "Auto detect": ensures rows exist for the well-known tools (M2_ST4 / M2_LOG / VS Code)
@@ -1289,9 +1365,24 @@ public partial class M2CommanderWindow : Window
         }
 
         _settings.CommanderCommands = cleaned;
+
+        var links = new List<CommanderLink>();
+        foreach (var l in _editLinks)
+        {
+            var name = (l.Name ?? string.Empty).Trim();
+            var target = (l.Target ?? string.Empty).Trim();
+            if (name.Length == 0 || target.Length == 0)
+                continue;
+            links.Add(new CommanderLink { Name = name, Target = target });
+        }
+        _settings.CommanderLinks = links;
+
         _settings.CommanderForceEnglishInput = ForceEnglishCheck.IsChecked == true;
         _settings.Save();
         RefreshCommandBar();
+        foreach (var pane in _panes)
+            if (pane.Dir == DrivesView)
+                RefreshPane(pane);
         CloseCommandEditor();
     }
 
@@ -1680,6 +1771,7 @@ public partial class M2CommanderWindow : Window
         public required string Path { get; init; }
         public bool IsFolder { get; init; }
         public bool IsParent { get; init; }
+        public bool IsLink { get; init; }
         public string Glyph { get; init; } = IconGlyph.GenericFile;
         public string SizeText { get; init; } = string.Empty;
         public string DateText { get; init; } = string.Empty;
