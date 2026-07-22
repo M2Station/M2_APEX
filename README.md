@@ -1,177 +1,192 @@
 # M2_APEX
 
-> 一個為 Windows 打造、受 [Listary](https://www.listary.com/) 啟發的極速檔案搜尋與應用程式啟動器。
+**English** · [繁體中文](README_TW.md)
 
-M2_APEX 常駐於系統匣,透過全域快捷鍵隨處叫出搜尋列,毫秒級模糊搜尋整台電腦的檔案、
-應用程式、系統指令與網頁;並提供 Listary 招牌的 **Quick Switch** —— 在檔案總管中直接
-打字即可即時篩選、高亮並跳到對應檔案。
+> A blazing-fast file search and app launcher for Windows, inspired by [Listary](https://www.listary.com/).
 
-技術:**.NET 9 · WPF · WinForms(系統匣)**,純受管理程式碼 + Win32/COM/UI Automation 互通,無第三方相依套件。
-品牌:系統匣圖示、視窗圖示與搜尋列皆使用 **M2** 標誌(向量繪製,見 `Assets/M2Logo.cs`)。
+M2_APEX lives in the system tray and summons a search bar anywhere via a global hotkey, fuzzy-searching your
+whole PC — files, apps, system commands and the web — in milliseconds. It also offers Listary's signature
+**Quick Switch**: just start typing in File Explorer to instantly filter, highlight and jump to the matching file.
+
+Tech: **.NET 9 · WPF · WinForms (tray)** — pure managed code with Win32/COM/UI Automation interop, no third-party dependencies.
+Branding: the tray icon, window icon and search bar all use the **M2** logo (drawn as vector art; see `Assets/M2Logo.cs`).
 
 ---
 
-## 主要功能
+## Features
 
-| 分類 | 說明 |
+| Category | Description |
 | --- | --- |
-| **全域啟動** | 雙擊 `Ctrl`,或按 `Alt+Space`,隨處叫出搜尋列 |
-| **檔案 / 資料夾搜尋** | 背景索引所有固定磁碟,毫秒級模糊搜尋,結果快取到磁碟開機即用 |
-| **應用程式啟動** | 掃描開始選單捷徑(`.lnk` / `.url` / `.appref-ms`) |
-| **網頁搜尋** | 找不到或需要時,一鍵用預設搜尋引擎搜尋;可自訂 URL |
-| **系統指令** | 鎖定、睡眠、關機、重新啟動、登出、資源回收筒、清空回收筒、設定、控制台、工作管理員 |
-| **模糊比對** | 支援字首、字界、駝峰、縮寫(如 `vsc` → Visual Studio Code),並將命中字元**高亮** |
-| **習慣排序** | 依使用頻率與最近使用時間,把常用結果排到前面 |
-| **結果動作** | 開啟、開啟所在資料夾、以系統管理員執行、複製路徑 |
-| **Quick Switch** | 在檔案總管檔案清單打字 → 彈出高亮清單 → 跳到 / 選取對應檔案 |
-| **系統匣常駐** | 背景執行;右鍵選單可開啟搜尋、重建索引、設定、結束 |
-| **設定視窗** | 快捷鍵、Quick Switch、結果數量、搜尋引擎、索引磁碟、排除資料夾、開機自動啟動等 |
+| **Global activation** | Double-tap `Ctrl`, or press `Alt+Space`, to summon the search bar anywhere |
+| **File / folder search** | Background-indexes all fixed drives; millisecond fuzzy search; results cached to disk for instant use on startup |
+| **App launching** | Scans Start Menu shortcuts (`.lnk` / `.url` / `.appref-ms`) |
+| **Web search** | One key to search with your default engine when nothing matches or on demand; customizable URL |
+| **System commands** | Lock, sleep, shut down, restart, sign out, Recycle Bin, empty Recycle Bin, Settings, Control Panel, Task Manager |
+| **Fuzzy matching** | Prefix, word-boundary, camelCase and acronym matches (e.g. `vsc` → Visual Studio Code), with matched characters **highlighted** |
+| **Habit ranking** | Frequently and recently used results float to the top |
+| **Result actions** | Open, open containing folder, run as administrator, copy path |
+| **Quick Switch** | Type in the File Explorer file list → a highlighted list pops up → jump to / select the matching file |
+| **Tray resident** | Runs in the background; right-click menu to open search, rebuild index, open settings, exit |
+| **Settings window** | Hotkeys, Quick Switch, result count, search engine, indexed drives, excluded folders, bar positions, launch at startup, and more |
 
 ---
 
-## 快捷鍵與操作
+## Shortcuts & usage
 
-### 搜尋列(全域)
+### Search bar (global)
 
-| 按鍵 | 動作 |
+| Key | Action |
 | --- | --- |
-| `Ctrl` `Ctrl`(雙擊) / `Alt+Space` | 開啟搜尋列 |
-| 直接輸入 | 即時搜尋 |
-| `↑` / `↓`、`PageUp` / `PageDown` | 移動選取 |
-| `Enter` | 開啟選取項目 |
-| `Ctrl+Enter` | 開啟所在資料夾 |
-| `Shift+Enter` | 以系統管理員執行 |
-| `Ctrl+C` | 複製路徑 |
-| `Esc` | 關閉 |
+| `Ctrl` `Ctrl` (double-tap) / `Alt+Space` | Open the search bar |
+| Type | Search live |
+| `↑` / `↓`, `PageUp` / `PageDown` | Move the selection |
+| `Enter` | Open the selected item |
+| `Ctrl+Enter` | Open containing folder |
+| `Shift+Enter` | Run as administrator |
+| `Ctrl+C` | Copy path |
+| `Esc` | Close |
 
-### Quick Switch(檔案總管內)
+### Quick Switch (inside File Explorer)
 
-| 按鍵 | 動作 |
+| Key | Action |
 | --- | --- |
-| 於檔案清單直接輸入 | 彈出高亮篩選清單 |
-| `↑` / `↓` | 在命中項目間切換(檔案總管同步選取) |
-| `Enter` | 原地開啟 / 進入 |
-| `Backspace` | 修改關鍵字 |
-| 滑鼠點選項目 | 開啟該項目 |
-| `Esc` / 點到其他視窗 | 關閉 |
+| Type in the file list | Pop up a highlighted, filtered list |
+| `↑` / `↓` | Move between matches (Explorer's selection follows) |
+| `Enter` | Open / enter in place |
+| `Backspace` | Edit the keyword |
+| Click an item | Open that item |
+| `Esc` / click another window | Close |
 
-> Quick Switch 只在檔案清單有焦點時作用;在網址列、搜尋框或重新命名(F2)等文字輸入框中打字完全不受影響。
-
----
-
-## 系統需求
-
-- Windows 10 / 11(x64;ARM64 見「建置」一節)
-- [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0)(若使用自封裝發行則不需另外安裝)
+> Quick Switch only acts while the file list has focus; typing in the address bar, search box, or a rename (F2)
+> text field is completely unaffected.
 
 ---
 
-## 建置與執行
+## Requirements
+
+- Windows 10 / 11 (x64; for ARM64 see the "Build & run" section)
+- [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0) (not needed for a self-contained release)
+
+---
+
+## Build & run
 
 ```powershell
-# 建置
+# Build
 dotnet build -c Release
 
-# 直接執行
+# Run directly
 dotnet run -c Release
-# 或執行輸出的可執行檔
+# Or run the built executable
 .\bin\Release\net9.0-windows\M2_APEX.exe
 ```
 
-### 發行成單一自封裝檔(免安裝 .NET)
+### Publish as a single self-contained file (no .NET install required)
 
 ```powershell
 # x64
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 
-# ARM64(Windows on ARM)
+# ARM64 (Windows on ARM)
 dotnet publish -c Release -r win-arm64 --self-contained true -p:PublishSingleFile=true
 ```
 
-> 專案為純受管理程式碼,所有原生呼叫皆針對 Windows 系統 DLL(`user32` / `shell32` / `kernel32`)與
-> COM / UI Automation,**架構中立**,可直接交叉編譯出 ARM64 版本。
+> The project is pure managed code; every native call targets Windows system DLLs (`user32` / `shell32` / `kernel32`)
+> and COM / UI Automation, so it is **architecture-neutral** and cross-compiles to ARM64 directly.
+
+### Releases & updates
+
+Pushing a `v*.*.*` tag runs the GitHub Actions **Release** workflow, which publishes self-contained single-file
+EXEs for **x64** and **ARM64** to the GitHub Releases page. The Settings window shows the current version and a
+**Check for updates** button (built on the GitHub Releases API; see `Services/UpdateService.cs`). Every push and
+pull request is also compiled by the **Build** CI workflow.
 
 ---
 
-## 專案結構
+## Project structure
 
 ```
 M2_APEX/
-├─ App.xaml(.cs)              # 進入點、系統匣、單一實例、崩潰記錄、服務組裝
-├─ app.manifest               # DPI 感知 / asInvoker / Win10-11 相容性
+├─ App.xaml(.cs)              # Entry point, tray, single instance, crash logging, service wiring
+├─ app.manifest               # DPI awareness / asInvoker / Win10-11 compatibility
 ├─ Assets/
-│  ├─ M2Logo.cs               # M2 標誌(WPF 幾何/影像/點陣圖來源)
-│  └─ m2-logo.svg             # 原始 SVG 標誌
+│  ├─ M2Logo.cs               # M2 logo (WPF geometry / image / bitmap source)
+│  └─ m2-logo.svg             # Original SVG logo
 ├─ Models/
-│  ├─ AppSettings.cs          # 使用者設定(JSON 持久化)
-│  └─ SearchResult.cs         # 搜尋結果模型
+│  ├─ AppSettings.cs          # User settings (JSON persistence)
+│  └─ SearchResult.cs         # Search result model
 ├─ Services/
-│  ├─ FuzzyMatcher.cs         # 模糊比對評分 + 命中索引(高亮用)
-│  ├─ FileIndexService.cs     # 全碟 BFS 索引 + 磁碟快取
-│  ├─ AppIndexService.cs      # 開始選單應用程式掃描
-│  ├─ SearchEngine.cs         # 合併 App/檔案/指令/網頁並排序
-│  ├─ CommandProvider.cs      # 內建系統指令
-│  ├─ UsageTracker.cs         # 習慣(頻率 + 最近)排序
-│  ├─ LaunchService.cs        # 開啟 / 開資料夾 / 管理員 / 複製路徑
-│  ├─ HotkeyService.cs        # 低階鍵盤鉤子(雙擊 Ctrl / Alt+Space / 按鍵攔截)
-│  ├─ QuickSwitchService.cs   # 檔案總管型即打即跳邏輯
+│  ├─ FuzzyMatcher.cs         # Fuzzy match scoring + matched indices (for highlighting)
+│  ├─ FileIndexService.cs     # Whole-drive BFS index + disk cache
+│  ├─ AppIndexService.cs      # Start Menu app scan
+│  ├─ SearchEngine.cs         # Merges apps / files / commands / web and ranks
+│  ├─ CommandProvider.cs      # Built-in system commands
+│  ├─ UsageTracker.cs         # Habit (frequency + recency) ranking
+│  ├─ LaunchService.cs        # Open / open folder / admin / copy path
+│  ├─ HotkeyService.cs        # Low-level keyboard hook (double-Ctrl / Alt+Space / key interception)
+│  ├─ QuickSwitchService.cs   # File-Explorer type-to-jump logic
 │  ├─ ExplorerAccess.cs       # Shell.Application COM + UI Automation
-│  ├─ IconGlyph.cs            # 依副檔名對應 Segoe MDL2 圖示
-│  ├─ AppIcon.cs             # 由 M2 標誌算繪系統匣圖示
-│  └─ StartupService.cs       # 開機自動啟動(登錄機碼)
+│  ├─ IconGlyph.cs            # Maps file extensions to Segoe MDL2 glyphs
+│  ├─ AppIcon.cs              # Renders the tray icon from the M2 logo
+│  ├─ UpdateService.cs        # Checks GitHub Releases for a newer version
+│  └─ StartupService.cs       # Launch at startup (registry key)
 ├─ ViewModels/
-│  └─ SearchViewModel.cs      # 搜尋列 MVVM(去抖動、選取)
+│  └─ SearchViewModel.cs      # Search-bar MVVM (debounce, selection)
 ├─ Views/
-│  ├─ SearchWindow.xaml(.cs)      # 主搜尋列
-│  ├─ QuickSwitchBar.xaml(.cs)    # Quick Switch 高亮清單浮窗
-│  └─ SettingsWindow.xaml(.cs)    # 設定視窗
+│  ├─ SearchWindow.xaml(.cs)      # Main search bar
+│  ├─ QuickSwitchBar.xaml(.cs)    # Quick Switch highlighted-list popup
+│  └─ SettingsWindow.xaml(.cs)    # Settings window
 ├─ Behaviors/
-│  ├─ Highlight.cs                # TextBlock 命中字元高亮附加屬性
+│  ├─ Highlight.cs                # Attached property that highlights matched characters in a TextBlock
 │  └─ KindToLabelConverter.cs
 └─ Native/
-   └─ NativeMethods.cs        # Win32 P/Invoke 宣告
+   └─ NativeMethods.cs        # Win32 P/Invoke declarations
 ```
 
 ---
 
-## 設定與資料位置
+## Settings & data location
 
-所有資料存於 `%APPDATA%\M2_APEX`:
+All data lives in `%APPDATA%\M2_APEX`:
 
-| 檔案 | 內容 |
+| File | Contents |
 | --- | --- |
-| `settings.json` | 使用者設定 |
-| `usage.json` | 使用習慣(頻率 / 最近使用) |
-| `index.cache` | 檔案索引快取 |
-| `crash.log` | 未處理例外記錄(如有) |
+| `settings.json` | User settings |
+| `usage.json` | Usage habits (frequency / recency) |
+| `index.cache` | File index cache |
+| `crash.log` | Unhandled-exception log (if any) |
 
-設定視窗可調整:雙擊 Ctrl / Alt+Space、Quick Switch、最大結果數、網頁搜尋 URL、
-索引磁碟(留空 = 所有固定磁碟)、排除資料夾、是否索引隱藏檔、開機自動啟動,並可手動「重建索引」。
-
----
-
-## 運作原理(概要)
-
-- **全域快捷鍵 / 按鍵攔截**:`WH_KEYBOARD_LL` 低階鍵盤鉤子偵測雙擊 Ctrl、Alt+Space,
-  並在檔案總管檔案清單有焦點時攔截輸入以驅動 Quick Switch(其餘情況一律放行,不影響一般打字)。
-- **檔案索引**:以佇列 BFS 列舉固定磁碟,套用排除清單與隱藏檔屬性;結果存為 `index.cache`,
-  下次啟動直接載入,並可手動重建。
-- **模糊比對**:貪婪子序列 + 字界 / 駝峰 / 縮寫加權評分,顯示時才計算命中索引供高亮;搜尋以平行 top-K 挑選。
-- **Quick Switch**:用 `Shell.Application` COM 讀取當前資料夾內容(比對 / 原地開啟),
-  用 UI Automation 選取並捲動到對應項目(失敗時仍可用 Enter 開啟,優雅降級)。
+The Settings window lets you adjust: double-Ctrl / Alt+Space, Quick Switch, max result count, web search URL,
+indexed drives (empty = all fixed drives), excluded folders, whether to index hidden files, search-bar and
+Quick Switch positions, and launch at startup — plus a manual "Rebuild index".
 
 ---
 
-## 已知限制
+## How it works (overview)
 
-- Quick Switch 目前比對「當前資料夾」內容(非跨資料夾全域搜尋)。
-- Quick Switch 的按鍵字元對應目前涵蓋 A–Z、0–9、空白、`.` `-` `_`(尚未支援完整符號 / 多國鍵盤配置)。
-- 檔案索引為啟動載入 + 手動重建(無即時檔案系統監看)。
-- 首次索引整台電腦需數秒(視檔案數量而定)。
+- **Global hotkeys / key interception**: a `WH_KEYBOARD_LL` low-level keyboard hook detects double-Ctrl and
+  Alt+Space, and intercepts input while the Explorer file list has focus to drive Quick Switch (everything else
+  passes through, so normal typing is never affected).
+- **File indexing**: a queued BFS enumerates fixed drives, applying the exclude list and hidden-file attribute;
+  results are saved as `index.cache` and loaded on next startup, with manual rebuild available.
+- **Fuzzy matching**: greedy subsequence + word-boundary / camelCase / acronym weighted scoring; matched indices
+  are computed only at display time for highlighting; search picks top-K in parallel.
+- **Quick Switch**: reads the current folder via `Shell.Application` COM (matching / open in place) and uses UI
+  Automation to select and scroll to the matching item (gracefully degrading to Enter-to-open on failure).
 
 ---
 
-## 授權
+## Known limitations
 
-僅供學習與個人使用之範例專案;「Listary」為其原作者之商標,本專案與其無任何關聯。
-M2 標誌取自同作者的 M2Station/M2_GIT_DIFF 專案。
+- Quick Switch currently matches the "current folder" contents (not a global cross-folder search).
+- Quick Switch key-character mapping currently covers A–Z, 0–9, space, `.` `-` `_` (full symbols / international
+  keyboard layouts are not yet supported).
+- File indexing is load-on-startup + manual rebuild (no live file-system watching).
+- The first full-PC index takes a few seconds (depending on file count).
+
+---
+
+## License
+
+A sample project for learning and personal use only; "Listary" is a trademark of its original author and this
+project is not affiliated with it. The M2 logo is taken from the same author's M2Station/M2_GIT_DIFF project.
