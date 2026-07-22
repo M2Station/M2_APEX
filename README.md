@@ -60,6 +60,30 @@ Branding: the tray icon, window icon and search bar all use the **M2** logo (dra
 > Quick Switch only acts while the file list has focus; typing in the address bar, search box, or a rename (F2)
 > text field is completely unaffected.
 
+### M2_Commander (dual-pane file manager)
+
+Open with `Ctrl` + `` ` `` (backtick) from any search surface. Fully keyboard-driven:
+
+| Key | Action |
+| --- | --- |
+| `Tab` | Switch the active pane |
+| `Alt+←` / `Alt+→` | Focus the pane on the left / right |
+| `Enter` | Open file / enter folder |
+| `Backspace` / `Alt+↑` | Go to the parent folder |
+| `Alt+[` | Back (history) |
+| `Alt+]` | Forward (history) |
+| Type `A`–`Z` | Filter the list |
+| `Ctrl+C` / `Ctrl+V` | Mark for copy / paste into the active pane |
+| `F2` | Rename |
+| `Del` | Delete permanently (bypasses Recycle Bin) |
+| `Shift+Del` | Fast-delete a folder |
+| `Ctrl+U` | Swap the two panes |
+| `Ctrl+R` | Refresh both panes |
+| `F1` | Actions menu (copy / move / delete / new…) |
+| `F11` | Custom command settings |
+| `F12` | All keyboard shortcuts |
+| `F10` / `Esc` | Quit |
+
 ---
 
 ## Requirements
