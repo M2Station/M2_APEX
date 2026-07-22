@@ -19,7 +19,8 @@ namespace Listly.Views;
 /// <summary>
 /// M2_Commander — a Norton Commander / muCommander style dual-pane file manager,
 /// opened with Ctrl+E from the search surfaces. Keyboard-driven: Tab switches panes,
-/// Enter opens, Backspace goes up, and F3/F4/F5/F6/F7/F8/F10 map to the classic actions.
+/// Enter opens, Backspace goes up, Alt+←/→ navigate history, and F12 lists all shortcuts.
+/// The file-operation methods (copy/move/delete/mkdir/rename) are kept but currently unbound.
 /// </summary>
 public partial class M2CommanderWindow : Window
 {
@@ -35,13 +36,6 @@ public partial class M2CommanderWindow : Window
         ("Backspace / Alt+↑", "commander.k.up"),
         ("Alt+←", "commander.k.back"),
         ("Alt+→", "commander.k.forward"),
-        ("F2", "commander.k.rename"),
-        ("F3", "commander.k.view"),
-        ("F4", "commander.k.edit"),
-        ("F5", "commander.k.copy"),
-        ("F6", "commander.k.move"),
-        ("F7", "commander.k.mkdir"),
-        ("F8", "commander.k.delete"),
         ("Ctrl+U", "commander.k.swap"),
         ("Ctrl+R", "commander.k.refresh"),
         ("Ctrl+E", "commander.k.openApp"),
@@ -653,34 +647,6 @@ public partial class M2CommanderWindow : Window
                 break;
             case Key.Back:
                 GoUp(_active);
-                e.Handled = true;
-                break;
-            case Key.F3:
-                InvokeSelected();
-                e.Handled = true;
-                break;
-            case Key.F4:
-                EditSelected();
-                e.Handled = true;
-                break;
-            case Key.F5:
-                CopySelected();
-                e.Handled = true;
-                break;
-            case Key.F6:
-                MoveSelected();
-                e.Handled = true;
-                break;
-            case Key.F7:
-                PromptMkdir();
-                e.Handled = true;
-                break;
-            case Key.F8:
-                DeleteSelected();
-                e.Handled = true;
-                break;
-            case Key.F2:
-                PromptRename();
                 e.Handled = true;
                 break;
             case Key.F12:
