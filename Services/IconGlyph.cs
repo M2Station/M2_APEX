@@ -9,6 +9,7 @@ namespace Listly.Services;
 public static class IconGlyph
 {
     public const string Folder = "\uE8B7";
+    public const string Drive = "\uEDA2";
     public const string App = "\uE71D";
     public const string GenericFile = "\uE8A5";
     public const string Web = "\uE774";

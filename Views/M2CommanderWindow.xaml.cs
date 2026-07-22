@@ -29,6 +29,9 @@ public partial class M2CommanderWindow : Window
     private Pane _active;
     private Action<string>? _promptAction;
 
+    // Pseudo-location shown above drive roots: a "This PC" listing of every drive.
+    private const string DrivesView = "::drives::";
+
     private static readonly (string Keys, string DescKey)[] HelpRows =
     {
         ("Tab", "commander.k.switch"),
@@ -92,8 +95,15 @@ public partial class M2CommanderWindow : Window
     private void NavigateTo(Pane pane, string dir, string? selectName, bool pushHistory)
     {
         string full;
-        try { full = Path.GetFullPath(dir); }
-        catch { return; }
+        if (dir == DrivesView)
+        {
+            full = DrivesView;
+        }
+        else
+        {
+            try { full = Path.GetFullPath(dir); }
+            catch { return; }
+        }
 
         if (!TryBuildEntries(full, out var entries, out var error))
         {
@@ -112,11 +122,19 @@ public partial class M2CommanderWindow : Window
 
     private void GoUp(Pane pane)
     {
-        var parent = Directory.GetParent(pane.Dir.TrimEnd(Path.DirectorySeparatorChar));
-        if (parent == null)
+        if (pane.Dir == DrivesView)
             return;
 
-        var from = Path.GetFileName(pane.Dir.TrimEnd(Path.DirectorySeparatorChar));
+        var trimmed = pane.Dir.TrimEnd(Path.DirectorySeparatorChar);
+        var parent = Directory.GetParent(trimmed);
+        if (parent == null)
+        {
+            // At a drive root (e.g. C:\) go up to the "This PC" list of all drives.
+            NavigateTo(pane, DrivesView, Path.GetPathRoot(pane.Dir), pushHistory: true);
+            return;
+        }
+
+        var from = Path.GetFileName(trimmed);
         NavigateTo(pane, parent.FullName, from, pushHistory: true);
     }
 
@@ -339,6 +357,40 @@ public partial class M2CommanderWindow : Window
         entries = new List<CommanderEntry>();
         error = string.Empty;
 
+        if (dir == DrivesView)
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                string sizeText = string.Empty;
+                string detail = drive.DriveType.ToString();
+                try
+                {
+                    if (drive.IsReady)
+                    {
+                        sizeText = FormatSize(drive.TotalSize);
+                        if (!string.IsNullOrWhiteSpace(drive.VolumeLabel))
+                            detail = drive.VolumeLabel;
+                    }
+                }
+                catch
+                {
+                    // Ignore drives we cannot query (e.g. an empty card reader).
+                }
+
+                entries.Add(new CommanderEntry
+                {
+                    Name = drive.Name,
+                    Path = drive.Name,
+                    IsFolder = true,
+                    Glyph = IconGlyph.Drive,
+                    SizeText = sizeText,
+                    DateText = detail
+                });
+            }
+
+            return true;
+        }
+
         try
         {
             var info = new DirectoryInfo(dir);
@@ -390,19 +442,17 @@ public partial class M2CommanderWindow : Window
             dirs.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             files.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
-            if (Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar)) is { } parent)
+            var parentPath = Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar))?.FullName ?? DrivesView;
+            entries.Add(new CommanderEntry
             {
-                entries.Add(new CommanderEntry
-                {
-                    Name = "..",
-                    Path = parent.FullName,
-                    IsFolder = true,
-                    IsParent = true,
-                    Glyph = IconGlyph.Folder,
-                    SizeText = "<UP>",
-                    DateText = string.Empty
-                });
-            }
+                Name = "..",
+                Path = parentPath,
+                IsFolder = true,
+                IsParent = true,
+                Glyph = IconGlyph.Folder,
+                SizeText = "<UP>",
+                DateText = string.Empty
+            });
 
             entries.AddRange(dirs);
             entries.AddRange(files);
@@ -422,7 +472,7 @@ public partial class M2CommanderWindow : Window
         foreach (var entry in entries)
             pane.Entries.Add(entry);
 
-        pane.Header.Text = dir;
+        pane.Header.Text = DisplayPath(dir);
 
         int index = 0;
         if (selectName != null)
@@ -499,7 +549,7 @@ public partial class M2CommanderWindow : Window
         int count = pane.Entries.Count(e => !e.IsParent);
         var sel = ActiveSelected();
         string selInfo = sel is null || sel.IsParent ? string.Empty : $"    ▸ {sel.Name}   {sel.SizeText}";
-        StatusText.Text = $"{pane.Dir}    ({count})" + selInfo;
+        StatusText.Text = $"{DisplayPath(pane.Dir)}    ({count})" + selInfo;
     }
 
     // --- Prompt overlay -----------------------------------------------------
@@ -676,6 +726,8 @@ public partial class M2CommanderWindow : Window
 
     private void Warn(string message) =>
         MessageBox.Show(this, message, "M2_Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    private static string DisplayPath(string dir) => dir == DrivesView ? Loc.T("commander.thisPc") : dir;
 
     private static (string dir, string? selectName) Resolve(string? path)
     {
