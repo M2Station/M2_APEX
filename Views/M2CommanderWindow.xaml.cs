@@ -1166,16 +1166,28 @@ public partial class M2CommanderWindow : Window
         AutoDetectResult.Text = Loc.T("commander.cmd.autoResult", filled, targets);
     }
 
-    /// <summary>Resolves a launcher label to an executable path (VS Code first, then the index).</summary>
+    /// <summary>
+    /// Resolves a launcher label to an executable path: first the matching catalog tool's known
+    /// install folders (commander-tools.json), then the app's file index by exe name / label.
+    /// </summary>
     private string? DetectProgram(string? label)
     {
         var name = label?.Trim();
         if (string.IsNullOrEmpty(name))
             return null;
 
-        if (name.Replace(" ", string.Empty).Equals("vscode", StringComparison.OrdinalIgnoreCase)
-            || name.Equals("code", StringComparison.OrdinalIgnoreCase))
-            return CommanderCommand.FindVsCode() ?? FindInIndex("Code");
+        var tool = CommanderTool.Catalog.FirstOrDefault(
+            t => string.Equals(t.Label, name, StringComparison.OrdinalIgnoreCase));
+
+        // 1) Direct probe of the tool's known install folders.
+        if (tool?.DetectPath() is { } direct)
+            return direct;
+
+        // 2) Fall back to the file index, matching each known exe name, then the label itself.
+        if (tool is not null)
+            foreach (var exe in tool.ExeNames)
+                if (FindInIndex(exe) is { } hit)
+                    return hit;
 
         return FindInIndex(name);
     }

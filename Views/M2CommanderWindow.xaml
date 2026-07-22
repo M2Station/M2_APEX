@@ -269,6 +269,13 @@
                         </StackPanel>
                     </Grid>
 
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{b:Loc commander.cmd.section}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Margin="0,4,0,6"
+                               Foreground="{DynamicResource ThemeTextBrush}" />
+
                     <!-- Action buttons -->
                     <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
                         <Button Content="{b:Loc commander.cmd.add}"

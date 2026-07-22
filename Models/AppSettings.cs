@@ -180,36 +180,15 @@ public sealed class CommanderCommand : INotifyPropertyChanged
     private void OnChanged(string name) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    /// <summary>The example entries created on first run.</summary>
-    public static List<CommanderCommand> DefaultSeed() => new()
-    {
-        new CommanderCommand { Label = "M2_LOG", Path = string.Empty, Arguments = "\"{path}\"" },
-        new CommanderCommand { Label = "M2_ST4", Path = string.Empty, Arguments = "\"{path}\"" },
-        new CommanderCommand { Label = "VS Code", Path = DetectVsCode(), Arguments = "\"{path}\"" },
-    };
-
-    /// <summary>Best-effort lookup of the installed VS Code executable; falls back to "code" (PATH).</summary>
-    private static string DetectVsCode() => FindVsCode() ?? "code";
-
     /// <summary>
-    /// Locates the installed VS Code <c>Code.exe</c> in the usual per-user / machine spots, or
-    /// returns <c>null</c> when it is not found. Used by the F11 "Auto detect" button.
+    /// The example launcher entries created on first run, built from the tool catalog
+    /// (<c>Assets/commander-tools.json</c>) with each tool's executable auto-detected where possible.
     /// </summary>
-    internal static string? FindVsCode()
-    {
-        string[] candidates =
+    public static List<CommanderCommand> DefaultSeed() =>
+        CommanderTool.Catalog.Select(t => new CommanderCommand
         {
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Microsoft VS Code", "Code.exe"),
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft VS Code", "Code.exe"),
-            System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft VS Code", "Code.exe"),
-        };
-
-        foreach (var candidate in candidates)
-        {
-            try { if (File.Exists(candidate)) return candidate; }
-            catch { /* ignore malformed candidate */ }
-        }
-
-        return null;
-    }
+            Label = t.Label,
+            Path = t.DetectPath() ?? string.Empty,
+            Arguments = string.IsNullOrEmpty(t.Arguments) ? "\"{path}\"" : t.Arguments
+        }).ToList();
 }
