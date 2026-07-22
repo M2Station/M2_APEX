@@ -168,6 +168,20 @@ public sealed class AppSettings
             // Best effort; ignore write failures.
         }
     }
+
+    /// <summary>Deletes the persisted settings file so the next load returns factory defaults.</summary>
+    public static void DeleteSavedFile()
+    {
+        try
+        {
+            if (File.Exists(ConfigPath))
+                File.Delete(ConfigPath);
+        }
+        catch
+        {
+            // Best effort.
+        }
+    }
 }
 
 /// <summary>
