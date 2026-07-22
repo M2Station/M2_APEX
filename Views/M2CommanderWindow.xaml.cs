@@ -18,8 +18,9 @@ namespace Listly.Views;
 
 /// <summary>
 /// M2_Commander — a Norton Commander / muCommander style dual-pane file manager,
-/// opened with Ctrl+E from the search surfaces. Keyboard-driven: Tab switches panes,
-/// Enter opens, Backspace goes up, and F3/F4/F5/F6/F7/F8/F10 map to the classic actions.
+/// opened with Ctrl+` from the search surfaces. Keyboard-driven: Tab switches panes,
+/// Enter opens, Backspace goes up, Alt+←/→ navigate history, and F12 lists all shortcuts.
+/// The file-operation methods (copy/move/delete/mkdir/rename) are kept but currently unbound.
 /// </summary>
 public partial class M2CommanderWindow : Window
 {
@@ -27,6 +28,23 @@ public partial class M2CommanderWindow : Window
     private readonly Pane _right;
     private Pane _active;
     private Action<string>? _promptAction;
+
+    // Pseudo-location shown above drive roots: a "This PC" listing of every drive.
+    private const string DrivesView = "::drives::";
+
+    private static readonly (string Keys, string DescKey)[] HelpRows =
+    {
+        ("Tab", "commander.k.switch"),
+        ("Enter", "commander.k.open"),
+        ("Backspace / Alt+↑", "commander.k.up"),
+        ("Alt+←", "commander.k.back"),
+        ("Alt+→", "commander.k.forward"),
+        ("Ctrl+U", "commander.k.swap"),
+        ("Ctrl+R", "commander.k.refresh"),
+        ("Ctrl+`", "commander.k.openApp"),
+        ("F12", "commander.k.help"),
+        ("F10 / Esc", "commander.k.quit"),
+    };
 
     public M2CommanderWindow()
     {
@@ -59,7 +77,9 @@ public partial class M2CommanderWindow : Window
     public void ShowAt(string? path)
     {
         var (dir, selectName) = Resolve(path);
-        NavigateTo(_active, dir, selectName, pushHistory: true);
+        _active.Back.Clear();
+        _active.Forward.Clear();
+        NavigateTo(_active, dir, selectName, pushHistory: false);
 
         if (!IsVisible)
             Show();
@@ -75,8 +95,15 @@ public partial class M2CommanderWindow : Window
     private void NavigateTo(Pane pane, string dir, string? selectName, bool pushHistory)
     {
         string full;
-        try { full = Path.GetFullPath(dir); }
-        catch { return; }
+        if (dir == DrivesView)
+        {
+            full = DrivesView;
+        }
+        else
+        {
+            try { full = Path.GetFullPath(dir); }
+            catch { return; }
+        }
 
         if (!TryBuildEntries(full, out var entries, out var error))
         {
@@ -95,11 +122,19 @@ public partial class M2CommanderWindow : Window
 
     private void GoUp(Pane pane)
     {
-        var parent = Directory.GetParent(pane.Dir.TrimEnd(Path.DirectorySeparatorChar));
-        if (parent == null)
+        if (pane.Dir == DrivesView)
             return;
 
-        var from = Path.GetFileName(pane.Dir.TrimEnd(Path.DirectorySeparatorChar));
+        var trimmed = pane.Dir.TrimEnd(Path.DirectorySeparatorChar);
+        var parent = Directory.GetParent(trimmed);
+        if (parent == null)
+        {
+            // At a drive root (e.g. C:\) go up to the "This PC" list of all drives.
+            NavigateTo(pane, DrivesView, Path.GetPathRoot(pane.Dir), pushHistory: true);
+            return;
+        }
+
+        var from = Path.GetFileName(trimmed);
         NavigateTo(pane, parent.FullName, from, pushHistory: true);
     }
 
@@ -322,6 +357,40 @@ public partial class M2CommanderWindow : Window
         entries = new List<CommanderEntry>();
         error = string.Empty;
 
+        if (dir == DrivesView)
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                string sizeText = string.Empty;
+                string detail = drive.DriveType.ToString();
+                try
+                {
+                    if (drive.IsReady)
+                    {
+                        sizeText = FormatSize(drive.TotalSize);
+                        if (!string.IsNullOrWhiteSpace(drive.VolumeLabel))
+                            detail = drive.VolumeLabel;
+                    }
+                }
+                catch
+                {
+                    // Ignore drives we cannot query (e.g. an empty card reader).
+                }
+
+                entries.Add(new CommanderEntry
+                {
+                    Name = drive.Name,
+                    Path = drive.Name,
+                    IsFolder = true,
+                    Glyph = IconGlyph.Drive,
+                    SizeText = sizeText,
+                    DateText = detail
+                });
+            }
+
+            return true;
+        }
+
         try
         {
             var info = new DirectoryInfo(dir);
@@ -373,19 +442,17 @@ public partial class M2CommanderWindow : Window
             dirs.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             files.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
-            if (Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar)) is { } parent)
+            var parentPath = Directory.GetParent(dir.TrimEnd(Path.DirectorySeparatorChar))?.FullName ?? DrivesView;
+            entries.Add(new CommanderEntry
             {
-                entries.Add(new CommanderEntry
-                {
-                    Name = "..",
-                    Path = parent.FullName,
-                    IsFolder = true,
-                    IsParent = true,
-                    Glyph = IconGlyph.Folder,
-                    SizeText = "<UP>",
-                    DateText = string.Empty
-                });
-            }
+                Name = "..",
+                Path = parentPath,
+                IsFolder = true,
+                IsParent = true,
+                Glyph = IconGlyph.Folder,
+                SizeText = "<UP>",
+                DateText = string.Empty
+            });
 
             entries.AddRange(dirs);
             entries.AddRange(files);
@@ -405,7 +472,7 @@ public partial class M2CommanderWindow : Window
         foreach (var entry in entries)
             pane.Entries.Add(entry);
 
-        pane.Header.Text = dir;
+        pane.Header.Text = DisplayPath(dir);
 
         int index = 0;
         if (selectName != null)
@@ -482,7 +549,7 @@ public partial class M2CommanderWindow : Window
         int count = pane.Entries.Count(e => !e.IsParent);
         var sel = ActiveSelected();
         string selInfo = sel is null || sel.IsParent ? string.Empty : $"    ▸ {sel.Name}   {sel.SizeText}";
-        StatusText.Text = $"{pane.Dir}    ({count})" + selInfo;
+        StatusText.Text = $"{DisplayPath(pane.Dir)}    ({count})" + selInfo;
     }
 
     // --- Prompt overlay -----------------------------------------------------
@@ -531,13 +598,22 @@ public partial class M2CommanderWindow : Window
 
     // --- Function-bar buttons ----------------------------------------------
 
-    private void OnViewClick(object sender, RoutedEventArgs e) => InvokeSelected();
-    private void OnEditClick(object sender, RoutedEventArgs e) => EditSelected();
-    private void OnCopyClick(object sender, RoutedEventArgs e) => CopySelected();
-    private void OnMoveClick(object sender, RoutedEventArgs e) => MoveSelected();
-    private void OnMkdirClick(object sender, RoutedEventArgs e) => PromptMkdir();
-    private void OnDeleteClick(object sender, RoutedEventArgs e) => DeleteSelected();
+    private void OnHelpClick(object sender, RoutedEventArgs e) => ShowHelp();
+    private void OnHelpCloseClick(object sender, RoutedEventArgs e) => CloseHelp();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Close();
+
+    private void ShowHelp()
+    {
+        HelpList.ItemsSource = HelpRows.Select(r => new HelpRow(r.Keys, Loc.T(r.DescKey))).ToList();
+        HelpOverlay.Visibility = Visibility.Visible;
+        HelpCloseButton.Focus();
+    }
+
+    private void CloseHelp()
+    {
+        HelpOverlay.Visibility = Visibility.Collapsed;
+        _active.List.Focus();
+    }
 
     // --- Input --------------------------------------------------------------
 
@@ -566,11 +642,47 @@ public partial class M2CommanderWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (HelpOverlay.Visibility == Visibility.Visible)
+        {
+            var help = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (help is Key.Escape or Key.F12)
+            {
+                CloseHelp();
+                e.Handled = true;
+            }
+            return;
+        }
+
         if (PromptOverlay.Visibility == Visibility.Visible)
             return;
 
         var mods = Keyboard.Modifiers;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        // Alt + arrows: Back / Forward history, Alt+Up = parent. Handled before the main switch
+        // with a bitwise Alt test so right-Alt / AltGr (reported as Ctrl+Alt) also works. Alt+Left
+        // falls back to the parent folder when there is no back-history yet.
+        if ((mods & ModifierKeys.Alt) == ModifierKeys.Alt)
+        {
+            switch (key)
+            {
+                case Key.Left:
+                    if (_active.Back.Count > 0)
+                        GoBack(_active);
+                    else
+                        GoUp(_active);
+                    e.Handled = true;
+                    return;
+                case Key.Right:
+                    GoForward(_active);
+                    e.Handled = true;
+                    return;
+                case Key.Up:
+                    GoUp(_active);
+                    e.Handled = true;
+                    return;
+            }
+        }
 
         switch (key)
         {
@@ -587,32 +699,8 @@ public partial class M2CommanderWindow : Window
                 GoUp(_active);
                 e.Handled = true;
                 break;
-            case Key.F3:
-                InvokeSelected();
-                e.Handled = true;
-                break;
-            case Key.F4:
-                EditSelected();
-                e.Handled = true;
-                break;
-            case Key.F5:
-                CopySelected();
-                e.Handled = true;
-                break;
-            case Key.F6:
-                MoveSelected();
-                e.Handled = true;
-                break;
-            case Key.F7:
-                PromptMkdir();
-                e.Handled = true;
-                break;
-            case Key.F8:
-                DeleteSelected();
-                e.Handled = true;
-                break;
-            case Key.F2:
-                PromptRename();
+            case Key.F12:
+                ShowHelp();
                 e.Handled = true;
                 break;
             case Key.F10:
@@ -631,14 +719,6 @@ public partial class M2CommanderWindow : Window
                 RefreshBoth();
                 e.Handled = true;
                 break;
-            case Key.Left when mods == ModifierKeys.Alt:
-                GoBack(_active);
-                e.Handled = true;
-                break;
-            case Key.Right when mods == ModifierKeys.Alt:
-                GoForward(_active);
-                e.Handled = true;
-                break;
         }
     }
 
@@ -646,6 +726,8 @@ public partial class M2CommanderWindow : Window
 
     private void Warn(string message) =>
         MessageBox.Show(this, message, "M2_Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    private static string DisplayPath(string dir) => dir == DrivesView ? Loc.T("commander.thisPc") : dir;
 
     private static (string dir, string? selectName) Resolve(string? path)
     {
@@ -700,6 +782,8 @@ public partial class M2CommanderWindow : Window
 
         return unit == 0 ? $"{bytes} B" : $"{size:0.#} {units[unit]}";
     }
+
+    private sealed record HelpRow(string Keys, string Desc);
 
     /// <summary>One row in a pane's listing.</summary>
     public sealed class CommanderEntry

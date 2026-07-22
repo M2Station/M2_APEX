@@ -142,6 +142,56 @@ public static class ExplorerAccess
         }
     }
 
+    /// <summary>Returns only the folder path shown by the given Explorer window (no item enumeration). STA thread only.</summary>
+    public static string? GetFolderPath(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+            return null;
+
+        var shellType = Type.GetTypeFromProgID("Shell.Application");
+        if (shellType is null)
+            return null;
+
+        try
+        {
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic windows = shell.Windows();
+            int count = windows.Count;
+            int target = hwnd.ToInt32();
+
+            for (int i = 0; i < count; i++)
+            {
+                dynamic? window = windows.Item(i);
+                if (window is null)
+                    continue;
+
+                int windowHandle;
+                try { windowHandle = (int)window.HWND; }
+                catch { continue; }
+
+                if (windowHandle != target)
+                    continue;
+
+                try
+                {
+                    dynamic document = window.Document;
+                    dynamic folder = document.Folder;
+                    return (string)folder.Self.Path;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+        catch
+        {
+            // Shell COM can throw transiently; treat as "no folder".
+        }
+
+        return null;
+    }
+
     /// <summary>Activates (opens/navigates to) the item with the given path in place. STA thread only.</summary>
     public static bool InvokeItem(IntPtr hwnd, string itemPath)
     {
