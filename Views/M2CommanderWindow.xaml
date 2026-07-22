@@ -241,29 +241,19 @@
 
         <!-- Function-key bar -->
         <Border Grid.Row="2" Background="{DynamicResource ThemeSolidBackgroundBrush}" Padding="6,6,6,8">
-            <UniformGrid Rows="1" Columns="7">
-                <Button x:Name="ViewButton" Style="{StaticResource FnButtonStyle}" Click="OnViewClick">
-                    <TextBlock><Run Text="F3 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.view}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="EditButton" Style="{StaticResource FnButtonStyle}" Click="OnEditClick">
-                    <TextBlock><Run Text="F4 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.edit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="CopyButton" Style="{StaticResource FnButtonStyle}" Click="OnCopyClick">
-                    <TextBlock><Run Text="F5 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.copy}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="MoveButton" Style="{StaticResource FnButtonStyle}" Click="OnMoveClick">
-                    <TextBlock><Run Text="F6 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.move}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="MkdirButton" Style="{StaticResource FnButtonStyle}" Click="OnMkdirClick">
-                    <TextBlock><Run Text="F7 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.mkdir}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="DeleteButton" Style="{StaticResource FnButtonStyle}" Click="OnDeleteClick">
-                    <TextBlock><Run Text="F8 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.delete}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-                <Button x:Name="QuitButton" Style="{StaticResource FnButtonStyle}" Click="OnQuitClick">
-                    <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
-                </Button>
-            </UniformGrid>
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button x:Name="HelpButton" Style="{StaticResource FnButtonStyle}" Click="OnHelpClick">
+                        <TextBlock><Run Text="F12 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.help}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                    </Button>
+                    <Button x:Name="QuitButton" Style="{StaticResource FnButtonStyle}" Click="OnQuitClick">
+                        <TextBlock><Run Text="F10 " Foreground="{DynamicResource ThemeAccentBrush}" FontWeight="Bold" /><Run Text="{b:Loc commander.quit}" Foreground="{DynamicResource ThemeTextBrush}" /></TextBlock>
+                    </Button>
+                </StackPanel>
+                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                           FontSize="11.5" Foreground="{DynamicResource ThemeSubtleBrush}"
+                           Text="{b:Loc commander.hint}" />
+            </Grid>
         </Border>
 
         <!-- Modal prompt overlay (MkDir / Rename) -->
@@ -301,6 +291,66 @@
                         <Button Content="{b:Loc commander.cancel}" MinWidth="88" Padding="10,6" Click="OnPromptCancelClick" />
                     </StackPanel>
                 </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Help overlay (F12): every keyboard shortcut -->
+        <Grid x:Name="HelpOverlay"
+              Grid.RowSpan="3"
+              Background="#99000000"
+              Visibility="Collapsed">
+            <Border Width="600"
+                    MaxHeight="600"
+                    Background="{DynamicResource ThemeCardBrush}"
+                    BorderBrush="{DynamicResource ThemeBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="#000000" />
+                </Border.Effect>
+                <DockPanel Margin="20">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="{b:Loc commander.shortcuts}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,12"
+                               Foreground="{DynamicResource ThemeTextBrush}" />
+                    <Button DockPanel.Dock="Bottom"
+                            x:Name="HelpCloseButton"
+                            Content="{b:Loc commander.ok}"
+                            MinWidth="96"
+                            Padding="10,6"
+                            HorizontalAlignment="Right"
+                            Margin="0,14,0,0"
+                            Click="OnHelpCloseClick" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="HelpList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="156" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Keys}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThemeAccentBrush}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Desc}"
+                                                   FontSize="13"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource ThemeTextBrush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
             </Border>
         </Grid>
     </Grid>

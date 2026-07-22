@@ -28,6 +28,27 @@ public partial class M2CommanderWindow : Window
     private Pane _active;
     private Action<string>? _promptAction;
 
+    private static readonly (string Keys, string DescKey)[] HelpRows =
+    {
+        ("Tab", "commander.k.switch"),
+        ("Enter", "commander.k.open"),
+        ("Backspace / Alt+↑", "commander.k.up"),
+        ("Alt+←", "commander.k.back"),
+        ("Alt+→", "commander.k.forward"),
+        ("F2", "commander.k.rename"),
+        ("F3", "commander.k.view"),
+        ("F4", "commander.k.edit"),
+        ("F5", "commander.k.copy"),
+        ("F6", "commander.k.move"),
+        ("F7", "commander.k.mkdir"),
+        ("F8", "commander.k.delete"),
+        ("Ctrl+U", "commander.k.swap"),
+        ("Ctrl+R", "commander.k.refresh"),
+        ("Ctrl+E", "commander.k.openApp"),
+        ("F12", "commander.k.help"),
+        ("F10 / Esc", "commander.k.quit"),
+    };
+
     public M2CommanderWindow()
     {
         InitializeComponent();
@@ -533,13 +554,22 @@ public partial class M2CommanderWindow : Window
 
     // --- Function-bar buttons ----------------------------------------------
 
-    private void OnViewClick(object sender, RoutedEventArgs e) => InvokeSelected();
-    private void OnEditClick(object sender, RoutedEventArgs e) => EditSelected();
-    private void OnCopyClick(object sender, RoutedEventArgs e) => CopySelected();
-    private void OnMoveClick(object sender, RoutedEventArgs e) => MoveSelected();
-    private void OnMkdirClick(object sender, RoutedEventArgs e) => PromptMkdir();
-    private void OnDeleteClick(object sender, RoutedEventArgs e) => DeleteSelected();
+    private void OnHelpClick(object sender, RoutedEventArgs e) => ShowHelp();
+    private void OnHelpCloseClick(object sender, RoutedEventArgs e) => CloseHelp();
     private void OnQuitClick(object sender, RoutedEventArgs e) => Close();
+
+    private void ShowHelp()
+    {
+        HelpList.ItemsSource = HelpRows.Select(r => new HelpRow(r.Keys, Loc.T(r.DescKey))).ToList();
+        HelpOverlay.Visibility = Visibility.Visible;
+        HelpCloseButton.Focus();
+    }
+
+    private void CloseHelp()
+    {
+        HelpOverlay.Visibility = Visibility.Collapsed;
+        _active.List.Focus();
+    }
 
     // --- Input --------------------------------------------------------------
 
@@ -568,6 +598,17 @@ public partial class M2CommanderWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (HelpOverlay.Visibility == Visibility.Visible)
+        {
+            var help = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (help is Key.Escape or Key.F12)
+            {
+                CloseHelp();
+                e.Handled = true;
+            }
+            return;
+        }
+
         if (PromptOverlay.Visibility == Visibility.Visible)
             return;
 
@@ -640,6 +681,10 @@ public partial class M2CommanderWindow : Window
                 break;
             case Key.F2:
                 PromptRename();
+                e.Handled = true;
+                break;
+            case Key.F12:
+                ShowHelp();
                 e.Handled = true;
                 break;
             case Key.F10:
@@ -719,6 +764,8 @@ public partial class M2CommanderWindow : Window
 
         return unit == 0 ? $"{bytes} B" : $"{size:0.#} {units[unit]}";
     }
+
+    private sealed record HelpRow(string Keys, string Desc);
 
     /// <summary>One row in a pane's listing.</summary>
     public sealed class CommanderEntry
