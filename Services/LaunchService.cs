@@ -39,6 +39,34 @@ public sealed class LaunchService
         }
     }
 
+    /// <summary>
+    /// Runs a user-defined quick pick: opens <see cref="SearchLink.Target"/> (app / folder / UNC / URL),
+    /// optionally with <see cref="SearchLink.Arguments"/>. The token <c>{path}</c> in either field is
+    /// replaced with <paramref name="contextPath"/> — the folder that was focused when search opened.
+    /// </summary>
+    public void LaunchQuickLink(SearchLink link, string? contextPath)
+    {
+        string ctx = contextPath ?? string.Empty;
+        string target = (link.Target ?? string.Empty).Replace("{path}", ctx).Trim();
+        if (target.Length == 0)
+            return;
+
+        string args = (link.Arguments ?? string.Empty).Replace("{path}", ctx).Trim();
+
+        try
+        {
+            var psi = new ProcessStartInfo(target) { UseShellExecute = true };
+            if (args.Length > 0)
+                psi.Arguments = args;
+
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
+    }
+
     public void OpenContainingFolder(SearchResult result)
     {
         if (result.Kind is ResultKind.WebSearch or ResultKind.Command)

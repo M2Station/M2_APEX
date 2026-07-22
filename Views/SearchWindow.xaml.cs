@@ -226,6 +226,14 @@ public partial class SearchWindow : Window
         if (_viewModel.SelectedResult is not { } result)
             return;
 
+        // Pinned quick picks run their own target, substituting the focused Explorer folder for {path}.
+        if (result.Kind == ResultKind.QuickLink && result.Link is { } link)
+        {
+            _launch.LaunchQuickLink(link, ExplorerAccess.GetFolderPath(_invokerHwnd));
+            HideSearch();
+            return;
+        }
+
         if (modifiers.HasFlag(ModifierKeys.Control))
         {
             _launch.OpenContainingFolder(result);

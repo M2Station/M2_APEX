@@ -7,7 +7,8 @@ public enum ResultKind
     File,
     Folder,
     WebSearch,
-    Command
+    Command,
+    QuickLink
 }
 
 /// <summary>A single row shown in the search results list.</summary>
@@ -36,4 +37,7 @@ public sealed class SearchResult
 
     /// <summary>Custom activation logic (used by commands).</summary>
     public Action? Activate { get; init; }
+
+    /// <summary>The user-defined quick pick this row represents (set only when <see cref="Kind"/> is QuickLink).</summary>
+    public SearchLink? Link { get; init; }
 }
