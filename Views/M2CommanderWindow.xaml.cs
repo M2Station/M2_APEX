@@ -59,7 +59,9 @@ public partial class M2CommanderWindow : Window
     public void ShowAt(string? path)
     {
         var (dir, selectName) = Resolve(path);
-        NavigateTo(_active, dir, selectName, pushHistory: true);
+        _active.Back.Clear();
+        _active.Forward.Clear();
+        NavigateTo(_active, dir, selectName, pushHistory: false);
 
         if (!IsVisible)
             Show();
@@ -572,6 +574,31 @@ public partial class M2CommanderWindow : Window
         var mods = Keyboard.Modifiers;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
+        // Alt + arrows: Back / Forward history, Alt+Up = parent. Handled before the main switch
+        // with a bitwise Alt test so right-Alt / AltGr (reported as Ctrl+Alt) also works. Alt+Left
+        // falls back to the parent folder when there is no back-history yet.
+        if ((mods & ModifierKeys.Alt) == ModifierKeys.Alt)
+        {
+            switch (key)
+            {
+                case Key.Left:
+                    if (_active.Back.Count > 0)
+                        GoBack(_active);
+                    else
+                        GoUp(_active);
+                    e.Handled = true;
+                    return;
+                case Key.Right:
+                    GoForward(_active);
+                    e.Handled = true;
+                    return;
+                case Key.Up:
+                    GoUp(_active);
+                    e.Handled = true;
+                    return;
+            }
+        }
+
         switch (key)
         {
             case Key.Tab:
@@ -629,14 +656,6 @@ public partial class M2CommanderWindow : Window
                 break;
             case Key.R when mods == ModifierKeys.Control:
                 RefreshBoth();
-                e.Handled = true;
-                break;
-            case Key.Left when mods == ModifierKeys.Alt:
-                GoBack(_active);
-                e.Handled = true;
-                break;
-            case Key.Right when mods == ModifierKeys.Alt:
-                GoForward(_active);
                 e.Handled = true;
                 break;
         }
