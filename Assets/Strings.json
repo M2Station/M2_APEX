@@ -106,7 +106,7 @@
     "commander.menu.rename": "Rename",
     "commander.menu.newFolder": "New folder",
     "commander.menu.newFile": "New text file",
-    "commander.cmd.title": "M2_Commander Settings",
+    "commander.cmd.title": "M2 Commander Settings",
     "commander.cmd.section": "Custom commands",
     "commander.cmd.hint": "{path} is replaced with the selected file or folder. Leave the program blank to hide an entry.",
     "commander.cmd.label": "Label",
