@@ -104,7 +104,7 @@ public partial class SearchWindow : Window
     /// </summary>
     private void PositionWindow()
     {
-        var area = SystemParameters.WorkArea;
+        var area = NativeMethods.GetWorkAreaDip(_invokerHwnd);
         const double margin = 22;
         double h = ActualHeight > 1 ? ActualHeight : 420;
         double centered = area.Left + (area.Width - Width) / 2;

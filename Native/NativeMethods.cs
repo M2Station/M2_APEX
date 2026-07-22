@@ -186,6 +186,52 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    public const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    /// <summary>
+    /// Work area (taskbar excluded) of the monitor that <paramref name="hwnd"/> is on, in WPF
+    /// device-independent units (same pixel/scale convention the bars use elsewhere). Falls back
+    /// to the primary work area when the handle is unknown, so corner positions land on the screen
+    /// of the triggering window rather than always the primary monitor.
+    /// </summary>
+    public static System.Windows.Rect GetWorkAreaDip(IntPtr hwnd)
+    {
+        if (hwnd != IntPtr.Zero)
+        {
+            var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+            if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref info))
+            {
+                double scale = GetDpiForWindow(hwnd) / 96.0;
+                if (scale <= 0)
+                    scale = 1.0;
+
+                var w = info.rcWork;
+                return new System.Windows.Rect(
+                    w.Left / scale, w.Top / scale,
+                    (w.Right - w.Left) / scale, (w.Bottom - w.Top) / scale);
+            }
+        }
+
+        return System.Windows.SystemParameters.WorkArea;
+    }
+
     // --- Cursor visibility: used to tell when a KVM/Synergy has handed the shared pointer
     //     to another PC (those tools hide the local cursor while driving another screen). ---
     public const int CURSOR_SHOWING = 0x00000001;

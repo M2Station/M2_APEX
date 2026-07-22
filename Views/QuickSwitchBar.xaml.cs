@@ -115,7 +115,7 @@ public partial class QuickSwitchBar : Window
         // Top-left / bottom-right snap to a screen corner rather than tracking the Explorer window.
         if (position is BarPosition.TopLeft or BarPosition.BottomRight)
         {
-            var work = SystemParameters.WorkArea;
+            var work = NativeMethods.GetWorkAreaDip(explorerHwnd);
             const double corner = 22;
             double barH = ActualHeight > 1 ? ActualHeight : 240;
             Left = position == BarPosition.TopLeft ? work.Left + corner : work.Right - Width - corner;
