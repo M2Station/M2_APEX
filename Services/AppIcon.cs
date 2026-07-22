@@ -21,6 +21,17 @@ public static class AppIcon
         return new Drawing.Icon(stream);
     }
 
+    // Broader range for the executable / shortcut icon (Explorer uses up to 256 px at high DPI).
+    private static readonly int[] FileIconSizes = { 16, 20, 24, 32, 40, 48, 64, 128, 256 };
+
+    /// <summary>Writes the app's multi-resolution icon to <paramref name="path"/> as a .ico file.</summary>
+    public static void SaveIconFile(string path)
+    {
+        using var stream = BuildIco(FileIconSizes);
+        using var file = File.Create(path);
+        stream.CopyTo(file);
+    }
+
     /// <summary>Assembles an in-memory <c>.ico</c> containing one 32bpp DIB frame per size.</summary>
     private static MemoryStream BuildIco(int[] sizes)
     {

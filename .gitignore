@@ -51,3 +51,6 @@ crash.log
 settings.json
 usage.json
 index.cache
+
+# ---- Local-only (not published to GitHub) ----
+_PROMOT/

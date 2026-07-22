@@ -127,8 +127,8 @@ public static class UpdateService
         }
     }
 
-    // Pick the single-file .exe asset matching this machine's CPU architecture. Falls
-    // back to the first .exe when no arch-specific build is found.
+    // Pick the .exe asset matching this machine's CPU architecture, preferring the installer
+    // (Setup-*.exe) over the portable build. Falls back to any .exe when no arch-specific match.
     private static (string? url, string? name) PickAsset(JsonElement assets)
     {
         if (assets.ValueKind != JsonValueKind.Array)
@@ -136,7 +136,10 @@ public static class UpdateService
 
         bool wantArm = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
 
-        string? fallbackUrl = null, fallbackName = null;
+        (string? Url, string? Name) arch = default;   // any build for this architecture
+        (string? Url, string? Name) setup = default;  // preferred: the installer for this architecture
+        (string? Url, string? Name) any = default;    // last resort: any .exe
+
         foreach (var asset in assets.EnumerateArray())
         {
             string name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
@@ -145,19 +148,25 @@ public static class UpdateService
             if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !IsTrustedAssetUrl(url))
                 continue;
 
+            if (any.Url is null)
+                any = (url, name);
+
             bool isArm = name.Contains("arm64", StringComparison.OrdinalIgnoreCase);
-            bool matches = wantArm
+            bool archMatch = wantArm
                 ? isArm
                 : name.Contains("x64", StringComparison.OrdinalIgnoreCase) && !isArm;
+            if (!archMatch)
+                continue;
 
-            if (matches)
-                return (url, name);
+            if (arch.Url is null)
+                arch = (url, name);
 
-            fallbackUrl ??= url;
-            fallbackName ??= name;
+            if (setup.Url is null && name.Contains("setup", StringComparison.OrdinalIgnoreCase))
+                setup = (url, name);
         }
 
-        return (fallbackUrl, fallbackName);
+        var pick = setup.Url is not null ? setup : arch.Url is not null ? arch : any;
+        return (pick.Url, pick.Name);
     }
 
     // True when "latest" is a strictly higher X.Y.Z version than "current".
