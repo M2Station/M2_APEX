@@ -49,10 +49,11 @@ public partial class M2CommanderWindow : Window
     {
         ("F1", "commander.k.actions"),
         ("Tab", "commander.k.switch"),
+        ("Alt+← / Alt+→", "commander.k.pane"),
         ("Enter", "commander.k.open"),
         ("Backspace / Alt+↑", "commander.k.up"),
-        ("Alt+←", "commander.k.back"),
-        ("Alt+→", "commander.k.forward"),
+        ("Alt+[", "commander.k.back"),
+        ("Alt+]", "commander.k.forward"),
         ("Ctrl+C", "commander.k.copy"),
         ("Ctrl+V", "commander.k.paste"),
         ("F2", "commander.k.rename"),
@@ -1069,26 +1070,33 @@ public partial class M2CommanderWindow : Window
         var mods = Keyboard.Modifiers;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-        // Alt + arrows: Back / Forward history, Alt+Up = parent. Handled before the main switch
-        // with a bitwise Alt test so right-Alt / AltGr (reported as Ctrl+Alt) also works. Alt+Left
-        // falls back to the parent folder when there is no back-history yet.
+        // Alt + navigation. Alt+←/→ focus the pane on the left / right; Alt+↑ goes to the parent
+        // folder; Alt+[ / Alt+] are Back / Forward history. Handled before the main switch with a
+        // bitwise Alt test so right-Alt / AltGr (reported as Ctrl+Alt) also works.
         if ((mods & ModifierKeys.Alt) == ModifierKeys.Alt)
         {
             switch (key)
             {
                 case Key.Left:
-                    if (_active.Back.Count > 0)
-                        GoBack(_active);
-                    else
-                        GoUp(_active);
+                    SetActive(_left);
+                    FocusSelected(_active);
                     e.Handled = true;
                     return;
                 case Key.Right:
-                    GoForward(_active);
+                    SetActive(_right);
+                    FocusSelected(_active);
                     e.Handled = true;
                     return;
                 case Key.Up:
                     GoUp(_active);
+                    e.Handled = true;
+                    return;
+                case Key.OemOpenBrackets:   // Alt+[  = Back
+                    GoBack(_active);
+                    e.Handled = true;
+                    return;
+                case Key.OemCloseBrackets:  // Alt+]  = Forward
+                    GoForward(_active);
                     e.Handled = true;
                     return;
             }
