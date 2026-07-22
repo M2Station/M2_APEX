@@ -11,7 +11,9 @@ public enum BarPosition
 {
     Top,
     Center,
-    Bottom
+    Bottom,
+    TopLeft,
+    BottomRight
 }
 
 /// <summary>User-configurable settings, persisted as JSON in %AppData%\Listly.</summary>
@@ -73,7 +75,7 @@ public sealed class AppSettings
     public BarPosition SearchBarPosition { get; set; } = BarPosition.Top;
 
     /// <summary>Where the Quick Switch bar appears over the File Explorer window.</summary>
-    public BarPosition QuickSwitchPosition { get; set; } = BarPosition.Top;
+    public BarPosition QuickSwitchPosition { get; set; } = BarPosition.BottomRight;
 
     /// <summary>
     /// Custom launcher entries shown in M2_Commander: as buttons below the file grid, inside the
