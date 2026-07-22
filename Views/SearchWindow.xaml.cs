@@ -19,6 +19,9 @@ public partial class SearchWindow : Window
     private readonly LaunchService _launch;
     private readonly AppSettings _settings;
 
+    /// <summary>Raised on Ctrl+E; argument is the selected item's path (or null for none/web/command).</summary>
+    public event Action<string?>? OpenCommanderRequested;
+
     public SearchWindow(SearchViewModel viewModel, LaunchService launch, AppSettings settings)
     {
         _viewModel = viewModel;
@@ -152,6 +155,11 @@ public partial class SearchWindow : Window
                 e.Handled = true;
                 break;
 
+            case Key.E when Keyboard.Modifiers == ModifierKeys.Control:
+                RequestOpenCommander();
+                e.Handled = true;
+                break;
+
             case Key.C when Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && QueryBox.SelectionLength == 0:
                 if (_viewModel.SelectedResult is { } toCopy)
                     _launch.CopyPath(toCopy);
@@ -188,6 +196,14 @@ public partial class SearchWindow : Window
             _launch.Launch(result, asAdmin);
         }
 
+        HideSearch();
+    }
+
+    private void RequestOpenCommander()
+    {
+        var result = _viewModel.SelectedResult;
+        string? path = result is { Kind: not (ResultKind.WebSearch or ResultKind.Command) } ? result.Path : null;
+        OpenCommanderRequested?.Invoke(path);
         HideSearch();
     }
 

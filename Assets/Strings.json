@@ -71,7 +71,22 @@
     "settings.openCrashLog": "Open crash log folder",
     "settings.poweredBy": "Powered by",
     "settings.save": "Save",
-    "settings.close": "Close"
+    "settings.close": "Close",
+
+    "commander.colName": "Name",
+    "commander.colSize": "Size",
+    "commander.colDate": "Modified",
+    "commander.view": "View",
+    "commander.edit": "Edit",
+    "commander.copy": "Copy",
+    "commander.move": "Move",
+    "commander.mkdir": "MkDir",
+    "commander.delete": "Delete",
+    "commander.quit": "Quit",
+    "commander.ok": "OK",
+    "commander.cancel": "Cancel",
+    "commander.newFolder": "New folder name:",
+    "commander.renameTo": "Rename to:"
   },
 
   "zh-TW": {
@@ -146,6 +161,21 @@
     "settings.openCrashLog": "開啟當機記錄資料夾",
     "settings.poweredBy": "技術提供",
     "settings.save": "儲存",
-    "settings.close": "關閉"
+    "settings.close": "關閉",
+
+    "commander.colName": "名稱",
+    "commander.colSize": "大小",
+    "commander.colDate": "修改日期",
+    "commander.view": "檢視",
+    "commander.edit": "編輯",
+    "commander.copy": "複製",
+    "commander.move": "移動",
+    "commander.mkdir": "新資料夾",
+    "commander.delete": "刪除",
+    "commander.quit": "結束",
+    "commander.ok": "確定",
+    "commander.cancel": "取消",
+    "commander.newFolder": "新資料夾名稱:",
+    "commander.renameTo": "重新命名為:"
   }
 }
