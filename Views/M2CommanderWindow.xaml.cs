@@ -316,88 +316,81 @@ public partial class M2CommanderWindow : Window
     }
 
     /// <summary>
-    /// "Fast delete" for large folders: robocopy-mirrors an empty temp folder over the target
-    /// (multithreaded, no Recycle Bin / shell progress overhead) then removes the emptied folder.
-    /// Files just use File.Delete. Folders are irreversible, so they ask for YES/NO confirmation.
+    /// "Fast delete folder": a permanent, folder-only wipe modelled on the classic sordum.net
+    /// "Fast Delete" shell tool — DEL /F/Q/S force-removes every file in the tree, then RMDIR /Q/S
+    /// removes the emptied directory. Both bypass the Recycle Bin and the shell's per-file progress
+    /// UI, so clearing a huge tree is far quicker than a normal delete. It is irreversible, so it
+    /// only runs on a real folder (never a file or the ".." row) after a YES/NO confirmation.
     /// </summary>
-    private void FastDeleteSelected()
+    private void FastDeleteFolderSelected()
     {
         var sel = ActiveSelected();
-        if (sel is null || sel.IsParent)
+        if (sel is null || sel.IsParent || !sel.IsFolder)
             return;
 
-        if (sel.IsFolder)
-        {
-            string path = sel.Path;
+        string path = sel.Path;
 
-            // Guard against wiping a whole drive: robocopy /MIR has no shell safety net.
-            var root = Path.GetPathRoot(path);
-            if (string.IsNullOrEmpty(path) || (root is not null && PathEquals(path, root)))
+        // Guard against wiping a whole drive: DEL /S + RMDIR /S have no shell safety net.
+        var root = Path.GetPathRoot(path);
+        if (string.IsNullOrEmpty(path) || (root is not null && PathEquals(path, root)))
+        {
+            Warn(Loc.T("commander.fastDelBlocked"));
+            return;
+        }
+
+        var confirm = MessageBox.Show(this, Loc.T("commander.fastDelConfirm", sel.Name),
+            "M2_Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        StatusText.Text = Loc.T("commander.fastDelRunning", sel.Name);
+
+        Task.Run(() => FastDeleteFolder(path)).ContinueWith(t =>
+            Dispatcher.Invoke(() =>
             {
-                Warn(Loc.T("commander.fastDelBlocked"));
-                return;
-            }
-
-            var confirm = MessageBox.Show(this, Loc.T("commander.fastDelConfirm", sel.Name),
-                "M2_Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes)
-                return;
-
-            StatusText.Text = Loc.T("commander.fastDelRunning", sel.Name);
-
-            Task.Run(() => FastDeleteFolder(path)).ContinueWith(t =>
-                Dispatcher.Invoke(() =>
-                {
-                    if (t.Exception is not null)
-                        Warn(t.Exception.GetBaseException().Message);
-                    RefreshBoth();
-                    FocusSelected(_active);
-                }), TaskScheduler.Default);
-        }
-        else
-        {
-            try { File.Delete(sel.Path); }
-            catch (Exception ex) { Warn(ex.Message); }
-            RefreshPane(_active);
-            FocusSelected(_active);
-        }
+                if (t.Exception is not null)
+                    Warn(t.Exception.GetBaseException().Message);
+                RefreshBoth();
+                FocusSelected(_active);
+            }), TaskScheduler.Default);
     }
 
+    /// <summary>
+    /// Runs the DEL /F/Q/S + RMDIR /Q/S "fast delete" against <paramref name="target"/>.
+    /// A Windows folder path can never contain a double quote (a reserved character), so wrapping
+    /// each path in quotes makes the composed command line injection-safe; the one exception is a
+    /// literal '%' (cmd would expand it as an environment variable), which takes the .NET fallback.
+    /// </summary>
     private static void FastDeleteFolder(string target)
     {
-        string empty = Path.Combine(Path.GetTempPath(), "m2_empty_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(empty);
-        try
+        if (!target.Contains('%'))
         {
-            // robocopy <empty> <target> /MIR clears the tree fast; arguments go through ArgumentList
-            // (not a shell) so paths with spaces or special characters cannot be misinterpreted.
-            var psi = new ProcessStartInfo("robocopy")
+            string q = "\"" + target + "\"";
+            var psi = new ProcessStartInfo("cmd.exe")
             {
+                // /s /c keeps the outer quotes literal; DEL clears files (incl. read-only) fast and
+                // silently, RMDIR then removes the emptied tree. WorkingDirectory stays out of the
+                // target so its own handle never blocks the removal.
+                Arguments = $"/s /c \"del /f/q/s {q} >nul 2>nul & rmdir /q/s {q}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
+                WindowStyle = ProcessWindowStyle.Hidden,
+                WorkingDirectory = Path.GetTempPath()
             };
-            foreach (var arg in new[]
-                     {
-                         empty, target, "/MIR", "/MT:16", "/R:1", "/W:1",
-                         "/NFL", "/NDL", "/NJH", "/NJS", "/NC", "/NS", "/NP"
-                     })
-            {
-                psi.ArgumentList.Add(arg);
-            }
-
-            using (var proc = Process.Start(psi))
-            {
-                proc?.WaitForExit();
-            }
-
-            if (Directory.Exists(target))
-                Directory.Delete(target, recursive: true);
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit();
         }
-        finally
+
+        // Final sweep: finish anything cmd left behind (and cover the '%' fallback path) by
+        // clearing read-only attributes and deleting the remainder with the .NET APIs.
+        if (Directory.Exists(target))
         {
-            try { if (Directory.Exists(empty)) Directory.Delete(empty, recursive: true); }
-            catch { /* temp cleanup is best effort */ }
+            foreach (var file in Directory.EnumerateFiles(target, "*", SearchOption.AllDirectories))
+            {
+                try { File.SetAttributes(file, FileAttributes.Normal); }
+                catch { /* best effort */ }
+            }
+            Directory.Delete(target, recursive: true);
         }
     }
 
@@ -836,6 +829,7 @@ public partial class M2CommanderWindow : Window
     {
         var sel = ActiveSelected();
         bool hasItem = sel is { IsParent: false };
+        bool isFolder = sel is { IsParent: false, IsFolder: true };
         bool canPaste = _clipSource is not null && (File.Exists(_clipSource) || Directory.Exists(_clipSource));
 
         var menu = new ContextMenu();
@@ -843,7 +837,7 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.paste"), "Ctrl+V", canPaste, PasteClipboard));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.move"), string.Empty, hasItem, MoveSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.delete"), "Del", hasItem, DeleteSelected));
-        menu.Items.Add(ActionItem(Loc.T("commander.menu.fastDelete"), "Shift+Del", hasItem, FastDeleteSelected));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.fastDelete"), "Shift+Del", isFolder, FastDeleteFolderSelected));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.rename"), "F2", hasItem, PromptRename));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
@@ -1110,7 +1104,7 @@ public partial class M2CommanderWindow : Window
                 e.Handled = true;
                 break;
             case Key.Delete when (mods & ModifierKeys.Shift) == ModifierKeys.Shift:
-                FastDeleteSelected();
+                FastDeleteFolderSelected();
                 e.Handled = true;
                 break;
             case Key.Delete:
