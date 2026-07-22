@@ -18,6 +18,7 @@ public partial class SearchWindow : Window
     private readonly SearchViewModel _viewModel;
     private readonly LaunchService _launch;
     private readonly AppSettings _settings;
+    private IntPtr _invokerHwnd;
 
     /// <summary>Raised on Ctrl+` ; argument is the selected item's path (or null for none/web/command).</summary>
     public event Action<string?>? OpenCommanderRequested;
@@ -57,6 +58,7 @@ public partial class SearchWindow : Window
 
     public void ShowSearch()
     {
+        _invokerHwnd = NativeMethods.GetForegroundWindow();
         _viewModel.Clear();
         _viewModel.ShowInitial();
 
@@ -201,8 +203,19 @@ public partial class SearchWindow : Window
 
     private void RequestOpenCommander()
     {
-        var result = _viewModel.SelectedResult;
-        string? path = result is { Kind: not (ResultKind.WebSearch or ResultKind.Command) } ? result.Path : null;
+        string? path = null;
+
+        // If you typed a search and highlighted a file/folder, open M2_Commander there.
+        if (!string.IsNullOrWhiteSpace(_viewModel.Query)
+            && _viewModel.SelectedResult is { Kind: not (ResultKind.WebSearch or ResultKind.Command) } result)
+        {
+            path = result.Path;
+        }
+
+        // Otherwise fall back to the folder that was in front when search opened
+        // (e.g. the Explorer window you were looking at).
+        path ??= ExplorerAccess.GetFolderPath(_invokerHwnd);
+
         OpenCommanderRequested?.Invoke(path);
         HideSearch();
     }
