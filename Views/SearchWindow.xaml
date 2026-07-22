@@ -179,10 +179,22 @@
                                Foreground="{DynamicResource ThemeSubtleBrush}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock HorizontalAlignment="Right"
-                               FontSize="11"
-                               Foreground="{DynamicResource ThemeSubtleBrush}"
-                               Text="{b:Loc search.hint}" />
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                        <TextBlock FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ThemeSubtleBrush}"
+                                   Text="{b:Loc search.hint}" />
+                        <TextBlock x:Name="CommanderHint"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   Foreground="{DynamicResource ThemeAccentBrush}"
+                                   ToolTip="{b:Loc search.commanderHintTip}"
+                                   MouseLeftButtonUp="OnCommanderHintClick"
+                                   Text="{b:Loc search.commanderHint}" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

@@ -4,6 +4,9 @@
 
     "search.placeholder": "Search files, apps, commands, and the web…",
     "search.hint": "↑↓ navigate   ↵ open   Ctrl+↵ folder   Esc close",
+    "search.commanderHint": "Ctrl+` M2_Commander",
+    "search.commanderHintTip": "Open M2_Commander (Ctrl+`) — click to see how",
+    "search.gifClose": "Press Esc or click anywhere to close",
 
     "kind.app": "App",
     "kind.file": "File",
@@ -144,6 +147,9 @@
 
     "search.placeholder": "搜尋檔案、應用程式、指令與網頁…",
     "search.hint": "↑↓ 移動   ↵ 開啟   Ctrl+↵ 資料夾   Esc 關閉",
+    "search.commanderHint": "Ctrl+` 開啟 M2_Commander",
+    "search.commanderHintTip": "開啟 M2_Commander（Ctrl+`）— 點擊看示範",
+    "search.gifClose": "按 Esc 或點任意處關閉",
 
     "kind.app": "應用程式",
     "kind.file": "檔案",
