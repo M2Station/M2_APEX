@@ -118,6 +118,49 @@ public partial class SettingsWindow : Window
         _ = _fileIndex.BuildAsync();
     }
 
+    private void OnFactoryResetClick(object sender, RoutedEventArgs e)
+    {
+        var choice = System.Windows.MessageBox.Show(this,
+            Loc.T("settings.factoryResetConfirm"),
+            Loc.T("settings.factoryResetTitle"),
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (choice != MessageBoxResult.Yes)
+            return;
+
+        // Wipe every persisted piece of state so the next launch starts at factory defaults:
+        // settings (including M2 Commander), the on-disk index cache, and usage history.
+        AppSettings.DeleteSavedFile();
+        _fileIndex.ClearCache();
+        UsageTracker.DeleteStore();
+        StartupService.SetEnabled(false);
+
+        RestartApp();
+    }
+
+    /// <summary>Relaunches M2_APEX after this instance exits (releasing the single-instance mutex).</summary>
+    private static void RestartApp()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe))
+            {
+                Process.Start(new ProcessStartInfo("powershell.exe",
+                    $"-NoProfile -WindowStyle Hidden -Command \"Wait-Process -Id {Environment.ProcessId} -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 400; Start-Process -FilePath '{exe}'\"")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                });
+            }
+        }
+        catch
+        {
+            // Best effort: even if relaunch can't be scheduled, the reset already applied on disk.
+        }
+
+        System.Windows.Application.Current.Shutdown();
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
     private void OnCreditClick(object sender, MouseButtonEventArgs e)

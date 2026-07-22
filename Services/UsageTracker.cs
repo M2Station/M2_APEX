@@ -23,6 +23,20 @@ public sealed class UsageTracker
 
     private static string StorePath => Path.Combine(ConfigDir, "usage.json");
 
+    /// <summary>Deletes the usage-history store so ranking starts fresh (factory reset).</summary>
+    public static void DeleteStore()
+    {
+        try
+        {
+            if (File.Exists(StorePath))
+                File.Delete(StorePath);
+        }
+        catch
+        {
+            // Best effort.
+        }
+    }
+
     public UsageTracker()
     {
         _entries = Load();

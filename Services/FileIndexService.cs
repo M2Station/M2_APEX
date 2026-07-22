@@ -73,6 +73,22 @@ public sealed class FileIndexService
         }
     }
 
+    /// <summary>Deletes the on-disk index cache and empties the in-memory index (factory reset).</summary>
+    public void ClearCache()
+    {
+        try
+        {
+            if (File.Exists(CachePath))
+                File.Delete(CachePath);
+        }
+        catch
+        {
+            // Ignore cache delete failures.
+        }
+
+        _items = Array.Empty<IndexItem>();
+    }
+
     /// <summary>Rebuilds the index on a background thread.</summary>
     public Task BuildAsync(CancellationToken cancellationToken = default)
     {

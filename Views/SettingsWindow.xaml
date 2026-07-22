@@ -269,6 +269,15 @@
                                Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
+                <TextBlock Text="{b:Loc settings.reset}" Style="{StaticResource Header}" />
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="FactoryResetButton" Content="{b:Loc settings.factoryReset}"
+                            Padding="12,6" Click="OnFactoryResetClick" />
+                    <TextBlock Text="{b:Loc settings.factoryResetHint}" VerticalAlignment="Center" Margin="14,0,0,0"
+                               MaxWidth="360" TextWrapping="Wrap"
+                               Foreground="{DynamicResource ThemeSubtleBrush}" />
+                </StackPanel>
+
                 <StackPanel x:Name="CreditPanel" Orientation="Horizontal" Cursor="Hand"
                             Margin="0,18,0,4" HorizontalAlignment="Left" Background="Transparent"
                             ToolTip="https://github.com/oahsiao"
