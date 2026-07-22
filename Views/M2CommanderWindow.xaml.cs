@@ -82,6 +82,8 @@ public partial class M2CommanderWindow : Window
         _fileIndex = fileIndex;
         InitializeComponent();
 
+        BrandText.Text = $"M2 Commander v{UpdateService.CurrentVersion}";
+
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewTextInput += OnPreviewTextInput;
         PreviewMouseDown += OnWindowMouseDown;
@@ -595,7 +597,7 @@ public partial class M2CommanderWindow : Window
         }
 
         var confirm = MessageBox.Show(this, Loc.T("commander.fastDelConfirm", sel.Name),
-            "M2_Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            "M2 Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes)
             return;
 
@@ -1809,7 +1811,7 @@ public partial class M2CommanderWindow : Window
     // --- Helpers ------------------------------------------------------------
 
     private void Warn(string message) =>
-        MessageBox.Show(this, message, "M2_Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show(this, message, "M2 Commander", MessageBoxButton.OK, MessageBoxImage.Warning);
 
     private static string DisplayPath(string dir) => dir == DrivesView ? Loc.T("commander.thisPc") : dir;
 
