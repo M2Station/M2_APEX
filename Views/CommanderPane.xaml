@@ -162,6 +162,7 @@
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="2,2,2,6"
+                     SelectionMode="Extended"
                      ItemContainerStyle="{StaticResource CommanderItemStyle}"
                      ItemTemplate="{StaticResource CommanderRowTemplate}"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"

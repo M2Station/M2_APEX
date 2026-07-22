@@ -43,8 +43,8 @@ public partial class M2CommanderWindow : Window
     private readonly ObservableCollection<CommanderCommand> _editCommands = new();
     private readonly ObservableCollection<CommanderLink> _editLinks = new();
 
-    // Source of the last COPY, re-used by PASTE (pane-to-pane; no OS clipboard).
-    private string? _clipSource;
+    // Sources of the last COPY (one or more), re-used by PASTE (pane-to-pane; no OS clipboard).
+    private List<string> _clipSources = new();
 
     // Active type-to-filter text for the current pane (empty = no filter).
     private string _filterText = string.Empty;
@@ -491,13 +491,15 @@ public partial class M2CommanderWindow : Window
 
     private void CopySelected()
     {
-        var sel = ActiveSelected();
-        if (sel is null || sel.IsParent)
+        var items = ActiveSelectedItems();
+        if (items.Count == 0)
             return;
 
-        // Just mark the source; the actual copy happens on PASTE (Ctrl+V) into the active pane.
-        _clipSource = sel.Path;
-        StatusText.Text = Loc.T("commander.copiedMark", sel.Name);
+        // Just mark the sources; the actual copy happens on PASTE (Ctrl+V) into the active pane.
+        _clipSources = items.Select(i => i.Path).ToList();
+        StatusText.Text = items.Count == 1
+            ? Loc.T("commander.copiedMark", items[0].Name)
+            : Loc.T("commander.copiedMarkMany", items.Count);
     }
 
     /// <summary>
@@ -506,14 +508,16 @@ public partial class M2CommanderWindow : Window
     /// </summary>
     private void CopyPathSelected()
     {
-        var sel = ActiveSelected();
-        if (sel is null || sel.IsParent)
+        var items = ActiveSelectedItems();
+        if (items.Count == 0)
             return;
 
         try
         {
-            System.Windows.Clipboard.SetText(sel.Path);
-            StatusText.Text = Loc.T("commander.pathCopied", sel.Path);
+            System.Windows.Clipboard.SetText(string.Join(Environment.NewLine, items.Select(i => i.Path)));
+            StatusText.Text = items.Count == 1
+                ? Loc.T("commander.pathCopied", items[0].Path)
+                : Loc.T("commander.pathCopiedMany", items.Count);
         }
         catch
         {
@@ -523,42 +527,47 @@ public partial class M2CommanderWindow : Window
 
     private void PasteClipboard()
     {
-        if (_clipSource is null || !(File.Exists(_clipSource) || Directory.Exists(_clipSource)))
+        var sources = _clipSources.Where(s => File.Exists(s) || Directory.Exists(s)).ToList();
+        if (sources.Count == 0)
             return;
 
-        ShellOp(NativeMethods.FO_COPY, _clipSource, _active.Dir, 0);
+        ShellOp(NativeMethods.FO_COPY, sources, _active.Dir, 0);
     }
 
     private void MoveSelected()
     {
-        var sel = ActiveSelected();
-        if (sel is null || sel.IsParent || _panes.Count != 2)
+        var items = ActiveSelectedItems();
+        if (items.Count == 0 || _panes.Count != 2)
             return;
 
-        ShellOp(NativeMethods.FO_MOVE, sel.Path, Other(_active).Dir, 0);
+        ShellOp(NativeMethods.FO_MOVE, items.Select(i => i.Path).ToList(), Other(_active).Dir, 0);
     }
 
     private void DeleteSelected()
     {
-        var sel = ActiveSelected();
-        if (sel is null || sel.IsParent)
+        var items = ActiveSelectedItems();
+        if (items.Count == 0)
             return;
 
-        // "Fast delete": permanent removal (no FOF_ALLOWUNDO, so it bypasses the Recycle Bin).
-        // FOF_NOCONFIRMATION is deliberately NOT set, so the shell still shows its standard
-        // "permanently delete?" prompt before the irreversible operation.
-        ShellOp(NativeMethods.FO_DELETE, sel.Path, null, 0);
+        // Permanent removal (no FOF_ALLOWUNDO, so it bypasses the Recycle Bin). FOF_NOCONFIRMATION
+        // is deliberately NOT set, so the shell still shows its standard "permanently delete?"
+        // prompt (listing every item) before the irreversible operation.
+        ShellOp(NativeMethods.FO_DELETE, items.Select(i => i.Path).ToList(), null, 0);
     }
 
-    private void ShellOp(uint func, string from, string? to, ushort extraFlags)
+    private void ShellOp(uint func, IReadOnlyList<string> from, string? to, ushort extraFlags)
     {
+        if (from.Count == 0)
+            return;
+
         try
         {
             var op = new NativeMethods.SHFILEOPSTRUCT
             {
                 hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle,
                 wFunc = func,
-                pFrom = from + "\0\0",
+                // Null-separated, double-null-terminated list so one call handles multiple items.
+                pFrom = string.Join("\0", from) + "\0\0",
                 pTo = to is null ? null : to + "\0\0",
                 fFlags = extraFlags
             };
@@ -582,28 +591,39 @@ public partial class M2CommanderWindow : Window
     /// </summary>
     private void FastDeleteFolderSelected()
     {
-        var sel = ActiveSelected();
-        if (sel is null || sel.IsParent || !sel.IsFolder)
+        var folders = ActiveSelectedItems().Where(e => e.IsFolder).ToList();
+        if (folders.Count == 0)
             return;
-
-        string path = sel.Path;
 
         // Guard against wiping a whole drive: DEL /S + RMDIR /S have no shell safety net.
-        var root = Path.GetPathRoot(path);
-        if (string.IsNullOrEmpty(path) || (root is not null && PathEquals(path, root)))
+        foreach (var folder in folders)
         {
-            Warn(Loc.T("commander.fastDelBlocked"));
-            return;
+            var root = Path.GetPathRoot(folder.Path);
+            if (string.IsNullOrEmpty(folder.Path) || (root is not null && PathEquals(folder.Path, root)))
+            {
+                Warn(Loc.T("commander.fastDelBlocked"));
+                return;
+            }
         }
 
-        var confirm = MessageBox.Show(this, Loc.T("commander.fastDelConfirm", sel.Name),
+        string confirmText = folders.Count == 1
+            ? Loc.T("commander.fastDelConfirm", folders[0].Name)
+            : Loc.T("commander.fastDelConfirmMany", folders.Count);
+        var confirm = MessageBox.Show(this, confirmText,
             "M2 Commander", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes)
             return;
 
-        StatusText.Text = Loc.T("commander.fastDelRunning", sel.Name);
+        StatusText.Text = folders.Count == 1
+            ? Loc.T("commander.fastDelRunning", folders[0].Name)
+            : Loc.T("commander.fastDelRunningMany", folders.Count);
 
-        Task.Run(() => FastDeleteFolder(path)).ContinueWith(t =>
+        var paths = folders.Select(f => f.Path).ToList();
+        Task.Run(() =>
+        {
+            foreach (var path in paths)
+                FastDeleteFolder(path);
+        }).ContinueWith(t =>
             Dispatcher.Invoke(() =>
             {
                 if (t.Exception is not null)
@@ -1064,6 +1084,10 @@ public partial class M2CommanderWindow : Window
 
     private CommanderEntry? ActiveSelected() => _active.List.SelectedItem as CommanderEntry;
 
+    /// <summary>Every selected, actionable entry in the active pane (the ".." row is never included).</summary>
+    private List<CommanderEntry> ActiveSelectedItems() =>
+        _active.List.SelectedItems.OfType<CommanderEntry>().Where(e => !e.IsParent).ToList();
+
     /// <summary>
     /// Gives keyboard focus to the selected row's container so the next arrow key moves from it.
     /// Setting SelectedIndex programmatically leaves keyboard focus unset, which makes the first
@@ -1210,7 +1234,7 @@ public partial class M2CommanderWindow : Window
         var sel = ActiveSelected();
         bool hasItem = sel is { IsParent: false };
         bool isFolder = sel is { IsParent: false, IsFolder: true };
-        bool canPaste = _clipSource is not null && (File.Exists(_clipSource) || Directory.Exists(_clipSource));
+        bool canPaste = _clipSources.Any(s => File.Exists(s) || Directory.Exists(s));
         bool canMove = hasItem && _panes.Count == 2;
 
         var menu = new ContextMenu();
