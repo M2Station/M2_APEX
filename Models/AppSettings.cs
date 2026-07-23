@@ -102,6 +102,13 @@ public sealed class AppSettings
     /// </summary>
     public bool CommanderForceEnglishInput { get; set; } = true;
 
+    /// <summary>
+    /// When true, each M2_Commander pane keeps its own type-to-filter keyword: switching panes
+    /// (Alt+←/→ or Tab) preserves both panes' filters instead of clearing the one you leave.
+    /// Off (default) matches the original behaviour — the filter is dropped when you switch panes.
+    /// </summary>
+    public bool CommanderKeepFilterPerPane { get; set; }
+
     /// <summary>Number of panes M2_Commander opens with (2-4).</summary>
     public int CommanderPaneCount { get; set; } = 2;
 

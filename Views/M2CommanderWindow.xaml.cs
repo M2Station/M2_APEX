@@ -1057,6 +1057,7 @@ public partial class M2CommanderWindow : Window
     {
         // A fresh listing drops any active type-to-filter so it does not hide the new folder.
         pane.List.Items.Filter = null;
+        pane.FilterText = string.Empty;
         if (_active == pane)
             _filterText = string.Empty;
 
@@ -1118,12 +1119,23 @@ public partial class M2CommanderWindow : Window
             return;
         }
 
-        // The filter belongs to the pane being left; clear it before switching.
-        _active.List.Items.Filter = null;
-        UpdateMatchHighlight(_active, string.Empty);
-        _filterText = string.Empty;
+        if (_settings.CommanderKeepFilterPerPane)
+        {
+            // Each pane keeps its own type-to-filter: stash the current keyword on the pane being
+            // left (its list stays filtered) and restore the keyword of the pane being entered.
+            _active.FilterText = _filterText;
+            _active = pane;
+            _filterText = pane.FilterText;
+        }
+        else
+        {
+            // Default: the filter belongs to the pane being left; clear it before switching.
+            _active.List.Items.Filter = null;
+            UpdateMatchHighlight(_active, string.Empty);
+            _filterText = string.Empty;
+            _active = pane;
+        }
 
-        _active = pane;
         UpdateActiveVisual();
         UpdateStatus();
     }
@@ -1483,6 +1495,7 @@ public partial class M2CommanderWindow : Window
             _editLinks.Add(new CommanderLink { Name = link.Name, Target = link.Target });
 
         ForceEnglishCheck.IsChecked = _settings.CommanderForceEnglishInput;
+        KeepFilterCheck.IsChecked = _settings.CommanderKeepFilterPerPane;
         AutoDetectResult.Text = string.Empty;
         CommandEditorList.ItemsSource = _editCommands;
         LinkEditorList.ItemsSource = _editLinks;
@@ -1687,6 +1700,7 @@ public partial class M2CommanderWindow : Window
         _settings.CommanderLinks = links;
 
         _settings.CommanderForceEnglishInput = ForceEnglishCheck.IsChecked == true;
+        _settings.CommanderKeepFilterPerPane = KeepFilterCheck.IsChecked == true;
         _settings.Save();
         RefreshCommandBar();
         foreach (var pane in _panes)
@@ -2111,6 +2125,7 @@ public partial class M2CommanderWindow : Window
         public System.Windows.Controls.Button CloseButton => View.CloseButton;
         public ObservableCollection<CommanderEntry> Entries { get; } = new();
         public string Dir { get; set; } = string.Empty;
+        public string FilterText { get; set; } = string.Empty;
         public Stack<string> Back { get; } = new();
         public Stack<string> Forward { get; } = new();
     }
