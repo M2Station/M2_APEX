@@ -14,7 +14,13 @@ public static class FuzzyMatcher
     /// Returns <see cref="NoMatch"/> when the query is not a subsequence of the text.
     /// Allocation-free so it is cheap enough to run across the whole index per keystroke.
     /// </summary>
-    public static double Score(string queryLower, string text)
+    public static double Score(string queryLower, string text) => Score(queryLower, text.AsSpan());
+
+    /// <summary>
+    /// Span overload used by the file-search hot path so it can score a name slice of the full path
+    /// without allocating a substring.
+    /// </summary>
+    public static double Score(string queryLower, ReadOnlySpan<char> text)
     {
         int qLen = queryLower.Length;
         int tLen = text.Length;
@@ -31,7 +37,15 @@ public static class FuzzyMatcher
         return best;
     }
 
-    private static double GreedyScore(string queryLower, string text, int qLen, int tLen)
+    // ASCII fast path for lower-casing one char (the hot loop); falls back to Unicode-correct folding.
+    private static char ToLower(char c)
+    {
+        if ((uint)(c - 'A') <= 'Z' - 'A')
+            return (char)(c | 0x20);
+        return c < 0x80 ? c : char.ToLowerInvariant(c);
+    }
+
+    private static double GreedyScore(string queryLower, ReadOnlySpan<char> text, int qLen, int tLen)
     {
         int qi = 0;
         double score = 0;
@@ -41,7 +55,7 @@ public static class FuzzyMatcher
 
         for (int ti = 0; ti < tLen && qi < qLen; ti++)
         {
-            if (char.ToLowerInvariant(text[ti]) != queryLower[qi])
+            if (ToLower(text[ti]) != queryLower[qi])
                 continue;
 
             double s = 1.0;
@@ -74,8 +88,8 @@ public static class FuzzyMatcher
         score -= firstMatch * 0.06;
         score -= (tLen - qLen) * 0.02;
 
-        if (text.Length >= qLen &&
-            text.AsSpan(0, qLen).Equals(queryLower, StringComparison.OrdinalIgnoreCase))
+        if (tLen >= qLen &&
+            text.Slice(0, qLen).Equals(queryLower, StringComparison.OrdinalIgnoreCase))
         {
             score += 2.5; // prefix match
             if (tLen == qLen)
@@ -88,7 +102,7 @@ public static class FuzzyMatcher
     /// <summary>
     /// Matches the query against the initials of each word (acronym search).
     /// </summary>
-    private static double AcronymScore(string queryLower, string text, int tLen)
+    private static double AcronymScore(string queryLower, ReadOnlySpan<char> text, int tLen)
     {
         int qi = 0;
         int matched = 0;
@@ -99,7 +113,7 @@ public static class FuzzyMatcher
             if (!IsBoundary(text, ti))
                 continue;
 
-            if (char.ToLowerInvariant(text[ti]) == queryLower[qi])
+            if (ToLower(text[ti]) == queryLower[qi])
             {
                 if (firstBoundary < 0)
                     firstBoundary = ti;
@@ -122,7 +136,7 @@ public static class FuzzyMatcher
         return score;
     }
 
-    private static bool IsBoundary(string text, int i)
+    private static bool IsBoundary(ReadOnlySpan<char> text, int i)
     {
         if (i <= 0)
             return true;
@@ -132,6 +146,17 @@ public static class FuzzyMatcher
 
         if (prev is ' ' or '_' or '-' or '.' or '/' or '\\' or '(' or '[')
             return true;
+
+        // ASCII fast path (the common case) avoids the Unicode-category lookups of char.IsUpper/…
+        if (cur < 0x80 && prev < 0x80)
+        {
+            if (IsAsciiUpper(cur) && IsAsciiLower(prev))
+                return true;
+            if (IsAsciiDigit(cur) && !IsAsciiDigit(prev))
+                return true;
+            return false;
+        }
+
         if (char.IsUpper(cur) && char.IsLower(prev))
             return true;
         if (char.IsDigit(cur) && !char.IsDigit(prev))
@@ -139,6 +164,10 @@ public static class FuzzyMatcher
 
         return false;
     }
+
+    private static bool IsAsciiUpper(char c) => (uint)(c - 'A') <= 'Z' - 'A';
+    private static bool IsAsciiLower(char c) => (uint)(c - 'a') <= 'z' - 'a';
+    private static bool IsAsciiDigit(char c) => (uint)(c - '0') <= '9' - '0';
 
     /// <summary>
     /// Computes the matched character indices for highlighting. Only called for the

@@ -39,7 +39,8 @@ public sealed class SearchEngine
             return EmptyQueryResults(max);
 
         var queryLower = query.ToLowerInvariant();
-        var candidates = new List<SearchResult>(128);
+        var locations = ResolvePriorityLocations();
+        var candidates = new List<SearchResult>(64);
 
         // User-pinned quick picks that match the query pin to the top of the list.
         AddQuickLinkMatches(queryLower, candidates);
@@ -50,9 +51,11 @@ public sealed class SearchEngine
 
         AddAppMatches(queryLower, candidates);
         AddCommandMatches(queryLower, candidates);
-        AddFileMatches(queryLower, candidates, max);
 
-        ApplyLocationPriority(candidates);
+        // Apply location priority to the small app/command/quick-pick set here; file matches fold the
+        // same boost into their score below so only the surviving top results are ever materialized.
+        ApplyLocationPriority(candidates, locations);
+        AddFileMatches(queryLower, candidates, max, locations);
 
         candidates.Sort((a, b) => b.Score.CompareTo(a.Score));
 
@@ -73,9 +76,8 @@ public sealed class SearchEngine
     /// set in Settings (top = highest) floats those matches up the list. Additive, so a much
     /// stronger name match elsewhere can still surface.
     /// </summary>
-    private void ApplyLocationPriority(List<SearchResult> candidates)
+    private void ApplyLocationPriority(List<SearchResult> candidates, string[] locations)
     {
-        var locations = ResolvePriorityLocations();
         if (locations.Length == 0)
             return;
 
@@ -85,6 +87,16 @@ public sealed class SearchEngine
             if (rank >= 0)
                 result.Score += (locations.Length - rank) * PriorityStep;
         }
+    }
+
+    /// <summary>The additive priority boost for a path (0 when it is under no priority location).</summary>
+    private static double PriorityBonus(string path, string[] locations)
+    {
+        if (locations.Length == 0)
+            return 0;
+
+        int rank = PriorityRank(path, locations);
+        return rank >= 0 ? (locations.Length - rank) * PriorityStep : 0;
     }
 
     /// <summary>Resolves the configured entries (tokens and paths) into full directory paths.</summary>
@@ -203,7 +215,7 @@ public sealed class SearchEngine
         }
     }
 
-    private void AddFileMatches(string queryLower, List<SearchResult> candidates, int max)
+    private void AddFileMatches(string queryLower, List<SearchResult> candidates, int max, string[] locations)
     {
         var items = _files.Items;
         int n = items.Length;
@@ -223,7 +235,8 @@ public sealed class SearchEngine
 
             for (int i = start; i < end; i++)
             {
-                double s = FuzzyMatcher.Score(queryLower, items[i].Name);
+                // Score against a slice of the path (no substring allocation) across the whole index.
+                double s = FuzzyMatcher.Score(queryLower, items[i].NameSpan);
                 if (double.IsNegativeInfinity(s))
                     continue;
 
@@ -239,26 +252,43 @@ public sealed class SearchEngine
         });
 
         double folderBonus = 0.5 + (_settings.ShowFilesFirst ? 2.0 : 0);
+        double fileBonus = _settings.ShowFilesFirst ? 2.0 : 0;
 
+        // Merge the per-partition fuzzy hits, fold in kind / usage / location bonuses, and keep only the
+        // top `max` overall — so Subtitle (GetDirectoryName) and the name substring are built ~max times,
+        // not for every one of the ~k*procs candidates.
+        var winners = new PriorityQueue<int, double>();
         foreach (var partial in partials)
         {
             if (partial is null)
                 continue;
 
-            foreach (var (score, index) in partial)
+            foreach (var (fuzzy, index) in partial)
             {
                 var item = items[index];
-                double kindBonus = item.IsDirectory ? folderBonus : (_settings.ShowFilesFirst ? 2.0 : 0);
-                candidates.Add(new SearchResult
-                {
-                    Title = item.Name,
-                    Subtitle = Path.GetDirectoryName(item.Path) ?? item.Path,
-                    Path = item.Path,
-                    Kind = item.IsDirectory ? ResultKind.Folder : ResultKind.File,
-                    Glyph = IconGlyph.ForFile(item.Path, item.IsDirectory),
-                    Score = score + kindBonus + _usage.GetBonus(item.Path)
-                });
+                double score = fuzzy
+                    + (item.IsDirectory ? folderBonus : fileBonus)
+                    + _usage.GetBonus(item.Path)
+                    + PriorityBonus(item.Path, locations);
+
+                winners.Enqueue(index, score);
+                if (winners.Count > max)
+                    winners.Dequeue();
             }
+        }
+
+        while (winners.TryDequeue(out int index, out double score))
+        {
+            var item = items[index];
+            candidates.Add(new SearchResult
+            {
+                Title = item.Name,
+                Subtitle = Path.GetDirectoryName(item.Path) ?? item.Path,
+                Path = item.Path,
+                Kind = item.IsDirectory ? ResultKind.Folder : ResultKind.File,
+                Glyph = IconGlyph.ForFile(item.Path, item.IsDirectory),
+                Score = score
+            });
         }
     }
 

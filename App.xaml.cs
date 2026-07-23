@@ -150,9 +150,14 @@ public partial class App : System.Windows.Application
     private void StartBackgroundIndexing()
     {
         _ = _appIndex.BuildAsync();
-        _fileIndex.LoadCache();
-        if (_fileIndex.Count == 0)
-            _ = _fileIndex.BuildAsync();
+
+        // Load the (potentially large) index cache off the UI thread so launch stays responsive.
+        _ = Task.Run(() =>
+        {
+            _fileIndex.LoadCache();
+            if (_fileIndex.Count == 0)
+                _ = _fileIndex.BuildAsync();
+        });
     }
 
     private void StartUpdateCheck()

@@ -5,15 +5,32 @@ namespace Listly.Services;
 /// <summary>A single indexed file or folder. A struct to keep the index compact.</summary>
 public readonly struct IndexItem
 {
-    public readonly string Name;
     public readonly string Path;
+    public readonly int NameStart;
     public readonly bool IsDirectory;
 
-    public IndexItem(string name, string path, bool isDirectory)
+    public IndexItem(string path, bool isDirectory)
     {
-        Name = name;
         Path = path;
+        NameStart = NameStartOf(path);
         IsDirectory = isDirectory;
+    }
+
+    /// <summary>The file/folder name as a slice of <see cref="Path"/> — allocation-free (search hot path).</summary>
+    public ReadOnlySpan<char> NameSpan => Path.AsSpan(NameStart);
+
+    /// <summary>The file/folder name (allocates; use only for the handful of displayed results).</summary>
+    public string Name => Path[NameStart..];
+
+    private static int NameStartOf(string path)
+    {
+        for (int i = path.Length - 1; i >= 0; i--)
+        {
+            char c = path[i];
+            if (c == '\\' || c == '/')
+                return i + 1;
+        }
+        return 0;
     }
 }
 
@@ -52,16 +69,15 @@ public sealed class FileIndexService
             if (!File.Exists(CachePath))
                 return;
 
-            var lines = File.ReadAllLines(CachePath);
-            var list = new List<IndexItem>(lines.Length);
-            foreach (var line in lines)
+            // Stream the file (no giant string[] from ReadAllLines) to keep peak memory low.
+            var list = new List<IndexItem>(1 << 19);
+            foreach (var line in File.ReadLines(CachePath))
             {
                 if (line.Length < 3)
                     continue;
 
                 bool isDir = line[0] == '1';
-                string path = line.Substring(2);
-                list.Add(new IndexItem(System.IO.Path.GetFileName(path), path, isDir));
+                list.Add(new IndexItem(line.Substring(2), isDir));
             }
 
             _items = list.ToArray();
@@ -138,7 +154,7 @@ public sealed class FileIndexService
                         if (excluded.Contains(name))
                             continue;
 
-                        result.Add(new IndexItem(name, sub, true));
+                        result.Add(new IndexItem(sub, true));
                         queue.Enqueue(sub);
                     }
                 }
@@ -150,7 +166,7 @@ public sealed class FileIndexService
                 try
                 {
                     foreach (var file in Directory.EnumerateFiles(dir, "*", options))
-                        result.Add(new IndexItem(System.IO.Path.GetFileName(file), file, false));
+                        result.Add(new IndexItem(file, false));
                 }
                 catch
                 {
