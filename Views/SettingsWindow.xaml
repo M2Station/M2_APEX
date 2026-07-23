@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:b="clr-namespace:Listly.Behaviors"
         Title="{b:Loc settings.title}"
-        Width="540"
-        Height="660"
+        Width="620"
+        Height="640"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource ThemeSolidBackgroundBrush}"
         FontFamily="Segoe UI"
@@ -163,204 +163,318 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Tabbed settings look: subtle labels with an accent underline on the selected tab. -->
+        <Style x:Key="ThemeTabItem" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeSubtleBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="13,8" Margin="0,0,2,0"
+                                BorderBrush="Transparent" BorderThickness="0,0,0,2" CornerRadius="6,6,0,0">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ThemeHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ThemeAccentBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ThemeTextBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ThemeTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ThemeTabItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" BorderBrush="{DynamicResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
+                                <TabPanel IsItemsHost="True" Margin="0,0,0,-1" />
+                            </Border>
+                            <Border Grid.Row="1" Padding="0,12,0,0">
+                                <ContentPresenter ContentSource="SelectedContent" />
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
+    <Grid Margin="18">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                    <Path x:Name="HeaderLogo" Width="30" Height="30" Stretch="Uniform"
-                          VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
-                    <TextBlock Text="APEX" VerticalAlignment="Center" Margin="10,0,0,0"
-                               FontSize="23" FontWeight="Bold" Foreground="{DynamicResource ThemeTextBrush}" />
-                    <TextBlock x:Name="HeaderVersion" VerticalAlignment="Bottom" Margin="8,0,0,4"
-                               FontSize="12" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </StackPanel>
+        <!-- Fixed header above the tabs -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,14">
+            <Path x:Name="HeaderLogo" Width="30" Height="30" Stretch="Uniform"
+                  VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
+            <TextBlock Text="APEX" VerticalAlignment="Center" Margin="10,0,0,0"
+                       FontSize="23" FontWeight="Bold" Foreground="{DynamicResource ThemeTextBrush}" />
+            <TextBlock x:Name="HeaderVersion" VerticalAlignment="Bottom" Margin="8,0,0,4"
+                       FontSize="12" Foreground="{DynamicResource ThemeSubtleBrush}" />
+        </StackPanel>
 
-                <TextBlock Text="{b:Loc settings.appearance}" Style="{StaticResource Header}" Margin="0,0,0,6" />
-                <TextBlock Text="{b:Loc settings.theme}" Margin="0,2,0,5" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <ComboBox x:Name="ThemeBox"
-                          Width="240"
-                          HorizontalAlignment="Left"
-                          Style="{StaticResource ThemeCombo}"
-                          SelectionChanged="OnThemeChanged" />
+        <TabControl Grid.Row="1" Style="{StaticResource ThemeTabControl}">
 
-                <TextBlock Text="{b:Loc settings.language}" Margin="0,12,0,5" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <ComboBox x:Name="LanguageBox"
-                          Width="240"
-                          HorizontalAlignment="Left"
-                          Style="{StaticResource ThemeCombo}"
-                          SelectionChanged="OnLanguageChanged" />
+            <!-- ============================= General ============================= -->
+            <TabItem Header="{b:Loc settings.tab.general}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.appearance}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <TextBlock Text="{b:Loc settings.theme}" Margin="0,2,0,5" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <ComboBox x:Name="ThemeBox" Width="240" HorizontalAlignment="Left"
+                                  Style="{StaticResource ThemeCombo}" SelectionChanged="OnThemeChanged" />
+                        <TextBlock Text="{b:Loc settings.language}" Margin="0,12,0,5" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <ComboBox x:Name="LanguageBox" Width="240" HorizontalAlignment="Left"
+                                  Style="{StaticResource ThemeCombo}" SelectionChanged="OnLanguageChanged" />
 
-                <TextBlock Text="{b:Loc settings.activation}" Style="{StaticResource Header}" />
-                <CheckBox x:Name="DoubleCtrlBox" Content="{b:Loc settings.doubleCtrl}" />
-                <CheckBox x:Name="AltSpaceBox" Content="{b:Loc settings.altSpace}" />
-                <CheckBox x:Name="QuickSwitchBox" Content="{b:Loc settings.quickSwitch}" />
-                <CheckBox x:Name="ForeignInputBox" Content="{b:Loc settings.foreignInput}" />
-                <StackPanel Orientation="Horizontal" Margin="0,6">
-                    <TextBlock Text="{b:Loc settings.doubleCtrlGap}" VerticalAlignment="Center" />
-                    <TextBox x:Name="ThresholdBox" Width="70" Margin="10,0,0,0" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <TextBlock Text="{b:Loc settings.searchPos}" VerticalAlignment="Center" Width="180" />
-                    <ComboBox x:Name="SearchPosBox" Width="150" HorizontalAlignment="Left"
-                              Style="{StaticResource ThemeCombo}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <TextBlock Text="{b:Loc settings.quickPos}" VerticalAlignment="Center" Width="180" />
-                    <ComboBox x:Name="QuickPosBox" Width="150" HorizontalAlignment="Left"
-                              Style="{StaticResource ThemeCombo}" />
-                </StackPanel>
+                        <TextBlock Text="{b:Loc settings.startup}" Style="{StaticResource Header}" />
+                        <CheckBox x:Name="StartupBox" Content="{b:Loc settings.launchAtStartup}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="CheckStartupButton" Content="{b:Loc settings.startupCheck}" Padding="12,6" Click="OnCheckStartupClick" />
+                            <Button x:Name="UnregisterStartupButton" Content="{b:Loc settings.startupUnregister}" Padding="12,6" Margin="8,0,0,0" Click="OnUnregisterStartupClick" />
+                        </StackPanel>
+                        <TextBlock x:Name="StartupStatusText" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="{b:Loc settings.results}" Style="{StaticResource Header}" />
-                <CheckBox x:Name="FilesFirstBox" Content="{b:Loc settings.filesFirst}" />
-                <StackPanel Orientation="Horizontal" Margin="0,6">
-                    <TextBlock Text="{b:Loc settings.maxResults}" VerticalAlignment="Center" />
-                    <TextBox x:Name="MaxResultsBox" Width="70" Margin="10,0,0,0" />
-                </StackPanel>
-                <TextBlock Text="{b:Loc settings.webUrl}" Margin="0,8,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <TextBox x:Name="WebUrlBox" />
+            <!-- ============================ Activation =========================== -->
+            <TabItem Header="{b:Loc settings.tab.activation}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.activation}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <CheckBox x:Name="DoubleCtrlBox" Content="{b:Loc settings.doubleCtrl}" />
+                        <CheckBox x:Name="AltSpaceBox" Content="{b:Loc settings.altSpace}" />
+                        <CheckBox x:Name="QuickSwitchBox" Content="{b:Loc settings.quickSwitch}" />
+                        <CheckBox x:Name="ForeignInputBox" Content="{b:Loc settings.foreignInput}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6">
+                            <TextBlock Text="{b:Loc settings.doubleCtrlGap}" VerticalAlignment="Center" />
+                            <TextBox x:Name="ThresholdBox" Width="70" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="{b:Loc settings.searchPos}" VerticalAlignment="Center" Width="180" />
+                            <ComboBox x:Name="SearchPosBox" Width="150" HorizontalAlignment="Left"
+                                      Style="{StaticResource ThemeCombo}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="{b:Loc settings.quickPos}" VerticalAlignment="Center" Width="180" />
+                            <ComboBox x:Name="QuickPosBox" Width="150" HorizontalAlignment="Left"
+                                      Style="{StaticResource ThemeCombo}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="{b:Loc settings.priority}"
-                           Margin="0,10,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
-                <TextBox x:Name="PriorityBox" Height="90" AcceptsReturn="True"
-                         VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+            <!-- ============================== Search ============================= -->
+            <TabItem Header="{b:Loc settings.tab.search}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.results}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <CheckBox x:Name="FilesFirstBox" Content="{b:Loc settings.filesFirst}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6">
+                            <TextBlock Text="{b:Loc settings.maxResults}" VerticalAlignment="Center" />
+                            <TextBox x:Name="MaxResultsBox" Width="70" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Text="{b:Loc settings.webUrl}" Margin="0,8,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBox x:Name="WebUrlBox" />
 
-                <!-- Quick picks: user-pinned entries shown at the top of the main search list -->
-                <TextBlock Text="{b:Loc settings.searchLinks}" Style="{StaticResource Header}" />
-                <TextBlock Text="{b:Loc settings.searchLinksHint}"
-                           Margin="0,0,0,6" TextWrapping="Wrap" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <Grid Margin="0,2,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="110" />
-                        <ColumnDefinition Width="98" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{b:Loc settings.searchLinkName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                    <TextBlock Grid.Column="1" Text="{b:Loc settings.searchLinkTarget}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                    <TextBlock Grid.Column="2" Text="{b:Loc settings.searchLinkArgs}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </Grid>
-                <ItemsControl x:Name="SearchLinkList">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,3">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="110" />
-                                    <ColumnDefinition Width="30" />
-                                    <ColumnDefinition Width="30" />
-                                    <ColumnDefinition Width="30" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
-                                         Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="13" VerticalContentAlignment="Center" />
-                                <TextBox Grid.Column="1" Margin="6,0,0,0"
-                                         Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="13" VerticalContentAlignment="Center" />
-                                <TextBox Grid.Column="2" Margin="6,0,0,0"
-                                         Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="13" VerticalContentAlignment="Center" />
-                                <Button Grid.Column="3" Margin="4,0,0,0" Content="&#x2191;" Tag="{Binding}"
-                                        Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
-                                        ToolTip="{b:Loc commander.links.up}" Click="OnSearchLinkUpClick" />
-                                <Button Grid.Column="4" Margin="4,0,0,0" Content="&#x2193;" Tag="{Binding}"
-                                        Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
-                                        ToolTip="{b:Loc commander.links.down}" Click="OnSearchLinkDownClick" />
-                                <Button Grid.Column="5" Margin="4,0,0,0" Content="&#x2715;" Tag="{Binding}"
-                                        Padding="0" Height="30" FontSize="13" VerticalAlignment="Center"
-                                        Click="OnSearchLinkRemoveClick" />
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Button Content="{b:Loc settings.searchLinkAdd}" HorizontalAlignment="Left"
-                        MinWidth="120" Padding="10,6" Margin="0,8,0,0" Click="OnSearchLinkAddClick" />
+                        <TextBlock Text="{b:Loc settings.priority}"
+                                   Margin="0,10,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
+                        <TextBox x:Name="PriorityBox" Height="90" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
 
-                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                    <Button x:Name="CleanHistoryButton" Content="{b:Loc settings.cleanHistory}"
-                            Padding="12,6" Click="OnCleanHistoryClick" />
-                    <TextBlock x:Name="CleanHistoryStatus" VerticalAlignment="Center" Margin="14,0,0,0"
-                               MaxWidth="320" TextWrapping="Wrap" Text="{b:Loc settings.cleanHistoryHint}"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <Button x:Name="CleanHistoryButton" Content="{b:Loc settings.cleanHistory}"
+                                    Padding="12,6" Click="OnCleanHistoryClick" />
+                            <TextBlock x:Name="CleanHistoryStatus" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       MaxWidth="320" TextWrapping="Wrap" Text="{b:Loc settings.cleanHistoryHint}"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="{b:Loc settings.indexing}" Style="{StaticResource Header}" />
-                <CheckBox x:Name="HiddenBox" Content="{b:Loc settings.hidden}" />
-                <TextBlock Text="{b:Loc settings.drives}"
-                           Margin="0,8,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <TextBox x:Name="DrivesBox" Height="60" AcceptsReturn="True"
-                         VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
-                <TextBlock Text="{b:Loc settings.excluded}"
-                           Margin="0,10,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                <TextBox x:Name="ExcludedBox" Height="120" AcceptsReturn="True"
-                         VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+            <!-- ============================ Quick Picks ========================== -->
+            <TabItem Header="{b:Loc settings.tab.quickPicks}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{b:Loc settings.searchLinks}"
+                               Style="{StaticResource Header}" Margin="0,0,0,4" />
+                    <TextBlock DockPanel.Dock="Top" Text="{b:Loc settings.searchLinksHint}"
+                               Margin="0,0,0,8" TextWrapping="Wrap" Foreground="{DynamicResource ThemeSubtleBrush}" />
 
-                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                    <Button x:Name="RebuildButton" Content="{b:Loc settings.rebuild}" Padding="12,6" Click="OnRebuildClick" />
-                    <TextBlock x:Name="IndexStatus" VerticalAlignment="Center" Margin="14,0,0,0"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </StackPanel>
+                    <!-- Auto detect (like M2 Commander): add missing M2 app rows + fill blank programs -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button x:Name="QuickAutoDetectButton" Content="{b:Loc settings.quickAutoDetect}"
+                                MinWidth="140" Padding="10,6" Click="OnQuickPickAutoDetectClick" />
+                        <TextBlock x:Name="QuickAutoDetectResult" VerticalAlignment="Center" Margin="12,0,0,0"
+                                   FontSize="12" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </StackPanel>
 
-                <TextBlock Text="{b:Loc settings.startup}" Style="{StaticResource Header}" />
-                <CheckBox x:Name="StartupBox" Content="{b:Loc settings.launchAtStartup}" />
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <Button x:Name="CheckStartupButton" Content="{b:Loc settings.startupCheck}" Padding="12,6" Click="OnCheckStartupClick" />
-                    <Button x:Name="UnregisterStartupButton" Content="{b:Loc settings.startupUnregister}" Padding="12,6" Margin="8,0,0,0" Click="OnUnregisterStartupClick" />
-                </StackPanel>
-                <TextBlock x:Name="StartupStatusText" Margin="0,6,0,0" TextWrapping="Wrap"
-                           Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    <!-- Column headers -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="108" />
+                            <ColumnDefinition Width="78" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{b:Loc settings.searchLinkName}" FontSize="11" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="1" Text="{b:Loc settings.searchLinkTarget}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBlock Grid.Column="2" Text="{b:Loc settings.searchLinkArgs}" FontSize="11" Margin="6,0,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                    </Grid>
 
-                <TextBlock Text="{b:Loc settings.about}" Style="{StaticResource Header}" />
-                <TextBlock x:Name="VersionText"
-                           Foreground="{DynamicResource ThemeSubtleBrush}" Margin="0,2,0,8" />
-                <StackPanel Orientation="Horizontal">
-                    <Button x:Name="CheckUpdateButton" Content="{b:Loc settings.checkUpdate}"
-                            Padding="12,6" Click="OnCheckUpdateClick" />
-                    <TextBlock x:Name="UpdateStatus" VerticalAlignment="Center" Margin="14,0,0,0"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
-                </StackPanel>
+                    <Button DockPanel.Dock="Bottom" Content="{b:Loc settings.searchLinkAdd}" HorizontalAlignment="Left"
+                            MinWidth="120" Padding="10,6" Margin="0,8,0,0" Click="OnSearchLinkAddClick" />
 
-                <TextBlock Text="{b:Loc settings.diagnostics}" Style="{StaticResource Header}" />
-                <StackPanel Orientation="Horizontal">
-                    <Button x:Name="CrashLogButton" Content="{b:Loc settings.openCrashLog}"
-                            Padding="12,6" Click="OnOpenCrashLogClick" />
-                    <TextBlock x:Name="CrashLogPathText" VerticalAlignment="Center" Margin="14,0,0,0"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="SearchLinkList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="70" />
+                                            <ColumnDefinition Width="108" />
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="26" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" VerticalContentAlignment="Center" />
+                                        <TextBox Grid.Column="1" Margin="6,0,0,0"
+                                                 Text="{Binding Target, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" VerticalContentAlignment="Center" />
+                                        <TextBox Grid.Column="2" Margin="6,0,0,0"
+                                                 Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="13" VerticalContentAlignment="Center" />
+                                        <!-- Install (program not found) / Check Update (found) — only for known M2 apps -->
+                                        <Grid Grid.Column="3" Margin="6,0,0,0">
+                                            <Button Content="{b:Loc settings.appInstall}" Tag="{Binding}"
+                                                    Padding="10,4" MinWidth="80" Height="30" VerticalAlignment="Center"
+                                                    Visibility="{Binding ShowInstall, Converter={StaticResource BoolToVis}}"
+                                                    Click="OnQuickPickInstallClick" />
+                                            <Button Content="{b:Loc settings.appCheckUpdate}" Tag="{Binding}"
+                                                    Padding="10,4" MinWidth="80" Height="30" VerticalAlignment="Center"
+                                                    Visibility="{Binding ShowCheckUpdate, Converter={StaticResource BoolToVis}}"
+                                                    Click="OnQuickPickCheckUpdateClick" />
+                                        </Grid>
+                                        <Button Grid.Column="4" Margin="4,0,0,0" Content="&#x2191;" Tag="{Binding}"
+                                                Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
+                                                ToolTip="{b:Loc commander.links.up}" Click="OnSearchLinkUpClick" />
+                                        <Button Grid.Column="5" Margin="4,0,0,0" Content="&#x2193;" Tag="{Binding}"
+                                                Padding="0" Height="30" FontSize="14" VerticalAlignment="Center"
+                                                ToolTip="{b:Loc commander.links.down}" Click="OnSearchLinkDownClick" />
+                                        <Button Grid.Column="6" Margin="4,0,0,0" Content="&#x2715;" Tag="{Binding}"
+                                                Padding="0" Height="30" FontSize="13" VerticalAlignment="Center"
+                                                Click="OnSearchLinkRemoveClick" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
 
-                <TextBlock Text="{b:Loc settings.reset}" Style="{StaticResource Header}" />
-                <StackPanel Orientation="Horizontal">
-                    <Button x:Name="FactoryResetButton" Content="{b:Loc settings.factoryReset}"
-                            Padding="12,6" Click="OnFactoryResetClick" />
-                    <TextBlock Text="{b:Loc settings.factoryResetHint}" VerticalAlignment="Center" Margin="14,0,0,0"
-                               MaxWidth="360" TextWrapping="Wrap"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </StackPanel>
+            <!-- ============================= Indexing ============================ -->
+            <TabItem Header="{b:Loc settings.tab.indexing}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.indexing}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <CheckBox x:Name="HiddenBox" Content="{b:Loc settings.hidden}" />
+                        <TextBlock Text="{b:Loc settings.drives}"
+                                   Margin="0,8,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBox x:Name="DrivesBox" Height="60" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+                        <TextBlock Text="{b:Loc settings.excluded}"
+                                   Margin="0,10,0,4" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        <TextBox x:Name="ExcludedBox" Height="120" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
 
-                <StackPanel x:Name="CreditPanel" Orientation="Horizontal" Cursor="Hand"
-                            Margin="0,18,0,4" HorizontalAlignment="Left" Background="Transparent"
-                            ToolTip="https://github.com/oahsiao"
-                            MouseLeftButtonUp="OnCreditClick">
-                    <Path x:Name="CreditLogo" Width="15" Height="15" Stretch="Uniform"
-                          VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
-                    <TextBlock Text="{b:Loc settings.poweredBy}" VerticalAlignment="Center" Margin="8,0,5,0"
-                               Foreground="{DynamicResource ThemeSubtleBrush}" />
-                    <TextBlock Text="OA Hsiao" VerticalAlignment="Center" FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThemeAccentBrush}" />
-                    <TextBlock Text="&#x2197;" VerticalAlignment="Center" Margin="5,0,0,0"
-                               FontSize="10" Foreground="{DynamicResource ThemeSubtleBrush}" />
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                            <Button x:Name="RebuildButton" Content="{b:Loc settings.rebuild}" Padding="12,6" Click="OnRebuildClick" />
+                            <TextBlock x:Name="IndexStatus" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <!-- =============================== About ============================= -->
+            <TabItem Header="{b:Loc settings.tab.about}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.about}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <TextBlock x:Name="VersionText"
+                                   Foreground="{DynamicResource ThemeSubtleBrush}" Margin="0,2,0,8" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="CheckUpdateButton" Content="{b:Loc settings.checkUpdate}"
+                                    Padding="12,6" Click="OnCheckUpdateClick" />
+                            <TextBlock x:Name="UpdateStatus" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <TextBlock Text="{b:Loc settings.diagnostics}" Style="{StaticResource Header}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="CrashLogButton" Content="{b:Loc settings.openCrashLog}"
+                                    Padding="12,6" Click="OnOpenCrashLogClick" />
+                            <TextBlock x:Name="CrashLogPathText" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <TextBlock Text="{b:Loc settings.reset}" Style="{StaticResource Header}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="FactoryResetButton" Content="{b:Loc settings.factoryReset}"
+                                    Padding="12,6" Click="OnFactoryResetClick" />
+                            <TextBlock Text="{b:Loc settings.factoryResetHint}" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       MaxWidth="300" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="CreditPanel" Orientation="Horizontal" Cursor="Hand"
+                                    Margin="0,18,0,4" HorizontalAlignment="Left" Background="Transparent"
+                                    ToolTip="https://github.com/oahsiao"
+                                    MouseLeftButtonUp="OnCreditClick">
+                            <Path x:Name="CreditLogo" Width="15" Height="15" Stretch="Uniform"
+                                  VerticalAlignment="Center" Fill="{DynamicResource ThemeAccentBrush}" />
+                            <TextBlock Text="{b:Loc settings.poweredBy}" VerticalAlignment="Center" Margin="8,0,5,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                            <TextBlock Text="OA Hsiao" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThemeAccentBrush}" />
+                            <TextBlock Text="&#x2197;" VerticalAlignment="Center" Margin="5,0,0,0"
+                                       FontSize="10" Foreground="{DynamicResource ThemeSubtleBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <Button Content="{b:Loc settings.save}" Width="90" Height="32" Margin="0,0,10,0" Click="OnSaveClick" />
             <Button Content="{b:Loc settings.close}" Width="90" Height="32" Click="OnCloseClick" />
         </StackPanel>

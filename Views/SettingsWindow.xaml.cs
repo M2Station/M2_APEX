@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -15,7 +16,7 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly FileIndexService _fileIndex;
     private readonly UsageTracker _usage;
-    private readonly ObservableCollection<SearchLink> _editSearchLinks = new();
+    private readonly ObservableCollection<QuickPickRow> _editSearchLinks = new();
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
     private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom"), Loc.T("pos.topLeft"), Loc.T("pos.bottomRight") };
     private bool _loadingTheme;
@@ -74,7 +75,20 @@ public partial class SettingsWindow : Window
         _settings.SearchLinks ??= new();
         _editSearchLinks.Clear();
         foreach (var link in _settings.SearchLinks)
-            _editSearchLinks.Add(new SearchLink { Name = link.Name, Target = link.Target, Arguments = link.Arguments });
+        {
+            // Auto-fill a blank program for a known M2 app from its install folders (fast probe) so an
+            // app installed after the pick was seeded shows "Check Update" instead of "Install".
+            string target = link.Target ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(target))
+                target = SupportApp.ByLabel(link.Name)?.DetectPath() ?? string.Empty;
+
+            _editSearchLinks.Add(new QuickPickRow
+            {
+                Name = link.Name ?? string.Empty,
+                Target = target,
+                Arguments = link.Arguments ?? string.Empty
+            });
+        }
         SearchLinkList.ItemsSource = _editSearchLinks;
 
         HiddenBox.IsChecked = _settings.IndexHiddenFiles;
@@ -110,11 +124,11 @@ public partial class SettingsWindow : Window
         _settings.ExcludedFolders = SplitLines(ExcludedBox.Text);
 
         _settings.SearchLinks = _editSearchLinks
-            .Where(l => !string.IsNullOrWhiteSpace(l.Target))
+            .Where(IsPersistableRow)
             .Select(l => new SearchLink
             {
                 Name = (l.Name ?? string.Empty).Trim(),
-                Target = l.Target.Trim(),
+                Target = (l.Target ?? string.Empty).Trim(),
                 Arguments = (l.Arguments ?? string.Empty).Trim()
             })
             .ToList();
@@ -141,12 +155,12 @@ public partial class SettingsWindow : Window
     }
 
     private void OnSearchLinkAddClick(object sender, RoutedEventArgs e) =>
-        _editSearchLinks.Add(new SearchLink());
+        _editSearchLinks.Add(new QuickPickRow());
 
     private void OnSearchLinkRemoveClick(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button { Tag: SearchLink link })
-            _editSearchLinks.Remove(link);
+        if (sender is System.Windows.Controls.Button { Tag: QuickPickRow row })
+            _editSearchLinks.Remove(row);
     }
 
     private void OnSearchLinkUpClick(object sender, RoutedEventArgs e) => MoveSearchLink(sender, -1);
@@ -155,15 +169,126 @@ public partial class SettingsWindow : Window
 
     private void MoveSearchLink(object sender, int delta)
     {
-        if (sender is not System.Windows.Controls.Button { Tag: SearchLink link })
+        if (sender is not System.Windows.Controls.Button { Tag: QuickPickRow row })
             return;
 
-        int i = _editSearchLinks.IndexOf(link);
+        int i = _editSearchLinks.IndexOf(row);
         int j = i + delta;
         if (i < 0 || j < 0 || j >= _editSearchLinks.Count)
             return;
 
         _editSearchLinks.Move(i, j);
+    }
+
+    /// <summary>Keep custom rows only when they have a target; always keep known-app rows (even with a
+    /// blank program) so the Install button persists. Blank targets stay hidden from the search list.</summary>
+    private static bool IsPersistableRow(QuickPickRow row) =>
+        !string.IsNullOrWhiteSpace(row.Target) ||
+        (!string.IsNullOrWhiteSpace(row.Name) && SupportApp.ByLabel(row.Name) is not null);
+
+    /// <summary>
+    /// Quick-picks "Auto detect" (mirrors M2 Commander's F11 auto-detect): ensures a row exists for every
+    /// first-party M2 app and fills any blank program from the tool's install folders / the file index.
+    /// Existing user-set targets are never overwritten.
+    /// </summary>
+    private void OnQuickPickAutoDetectClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var tool in SupportApp.Catalog.Where(t => t.IsApp))
+        {
+            if (!_editSearchLinks.Any(r => string.Equals((r.Name ?? string.Empty).Trim(), tool.Label, StringComparison.OrdinalIgnoreCase)))
+                _editSearchLinks.Add(new QuickPickRow
+                {
+                    Name = tool.Label,
+                    Arguments = string.IsNullOrEmpty(tool.Arguments) ? string.Empty : tool.Arguments
+                });
+        }
+
+        int filled = 0, targets = 0;
+        foreach (var row in _editSearchLinks)
+        {
+            if (!string.IsNullOrWhiteSpace(row.Target))
+                continue;
+
+            var tool = SupportApp.ByLabel(row.Name);
+            if (tool is null)
+                continue;
+
+            targets++;
+            var found = ProgramDetector.Detect(tool, _fileIndex);
+            if (found is null)
+                continue;
+
+            row.Target = found;
+            if (string.IsNullOrWhiteSpace(row.Arguments))
+                row.Arguments = string.IsNullOrEmpty(tool.Arguments) ? "\"{path}\"" : tool.Arguments;
+            filled++;
+        }
+
+        QuickAutoDetectResult.Text = Loc.T("settings.quickAutoResult", filled, targets);
+    }
+
+    /// <summary>Install button (program not detected): opens the app's GitHub releases page to download it.</summary>
+    private void OnQuickPickInstallClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: QuickPickRow row }
+            && TryParseRepo(row.Repo, out var owner, out var repo))
+            UpdateService.OpenReleasesPage(owner, repo);
+    }
+
+    /// <summary>Check Update button: compares the installed program's version with the latest release.</summary>
+    private async void OnQuickPickCheckUpdateClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button
+            || button.Tag is not QuickPickRow row
+            || !TryParseRepo(row.Repo, out var owner, out var repo))
+            return;
+
+        button.IsEnabled = false;
+        try
+        {
+            string current = UpdateService.GetInstalledVersion(row.Target);
+            var info = await UpdateService.CheckForUpdateAsync(owner, repo, current);
+            string title = string.IsNullOrWhiteSpace(row.Name) ? repo : row.Name;
+
+            if (info is null)
+            {
+                System.Windows.MessageBox.Show(this, Loc.T("update.failed"), title,
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else if (info.HasUpdate)
+            {
+                var choice = System.Windows.MessageBox.Show(this,
+                    Loc.T("update.promptBody", info.LatestVersion, info.CurrentVersion),
+                    title, MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (choice == MessageBoxResult.Yes)
+                    UpdateService.OpenInBrowser(info.DownloadUrl ?? info.ReleaseUrl, owner, repo);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(this, Loc.T("update.upToDate", info.CurrentVersion), title,
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
+    }
+
+    /// <summary>Splits a catalog "owner/name" repo string; false when malformed.</summary>
+    private static bool TryParseRepo(string? repo, out string owner, out string name)
+    {
+        owner = name = string.Empty;
+        if (string.IsNullOrWhiteSpace(repo))
+            return false;
+
+        var parts = repo.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+            return false;
+
+        owner = parts[0];
+        name = parts[1];
+        return true;
     }
 
     private void OnCleanHistoryClick(object sender, RoutedEventArgs e)
@@ -353,4 +478,69 @@ public partial class SettingsWindow : Window
             // Ignore if already closing.
         }
     }
+}
+
+/// <summary>
+/// A single editable quick-pick row in Settings. Wraps the persisted <see cref="SearchLink"/> fields and,
+/// when its <see cref="Name"/> matches a first-party M2 app in the tool catalog, exposes an Install
+/// (program not detected) or Check Update (program detected) action driven by whether a target is set.
+/// </summary>
+public sealed class QuickPickRow : INotifyPropertyChanged
+{
+    private string _name = string.Empty;
+    private string _target = string.Empty;
+    private string _arguments = string.Empty;
+    private string _repo = string.Empty;
+
+    /// <summary>Display name; also matches a catalog app (drives the Install / Check Update action).</summary>
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name == value)
+                return;
+            _name = value;
+            _repo = SupportApp.ByLabel(value)?.Repo ?? string.Empty;
+            OnChanged(nameof(Name));
+            OnChanged(nameof(ShowInstall));
+            OnChanged(nameof(ShowCheckUpdate));
+        }
+    }
+
+    /// <summary>Application path, folder / UNC path, or URL. Blank = the app is treated as not installed.</summary>
+    public string Target
+    {
+        get => _target;
+        set
+        {
+            if (_target == value)
+                return;
+            _target = value;
+            OnChanged(nameof(Target));
+            OnChanged(nameof(ShowInstall));
+            OnChanged(nameof(ShowCheckUpdate));
+        }
+    }
+
+    /// <summary>Optional launch arguments; <c>{path}</c> is replaced with the focused folder.</summary>
+    public string Arguments
+    {
+        get => _arguments;
+        set { if (_arguments != value) { _arguments = value; OnChanged(nameof(Arguments)); } }
+    }
+
+    /// <summary>GitHub owner/repo resolved from the catalog by <see cref="Name"/>; empty for custom rows.</summary>
+    public string Repo => _repo;
+
+    /// <summary>Known M2 app whose program has not been detected yet -> show Install.</summary>
+    public bool ShowInstall => !string.IsNullOrEmpty(_repo) && string.IsNullOrWhiteSpace(_target);
+
+    /// <summary>Known M2 app whose program is set -> show Check Update.</summary>
+    public bool ShowCheckUpdate => !string.IsNullOrEmpty(_repo) && !string.IsNullOrWhiteSpace(_target);
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnChanged(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

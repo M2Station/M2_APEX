@@ -66,12 +66,22 @@ public static class UpdateService
     /// </summary>
     public static async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
     {
-        string current = CurrentVersion;
-        string releasesUrl = $"https://github.com/{Owner}/{Repo}/releases/latest";
+        return await CheckForUpdateAsync(Owner, Repo, CurrentVersion, ct);
+    }
+
+    /// <summary>
+    /// Queries the latest release of any <paramref name="owner"/>/<paramref name="repo"/> (e.g. a sibling
+    /// M2 app) and reports whether it is newer than <paramref name="currentVersion"/>. Returns <c>null</c>
+    /// on any network/parse failure. Used by the Settings quick-picks per-app "Check Update".
+    /// </summary>
+    public static async Task<UpdateInfo?> CheckForUpdateAsync(string owner, string repo, string currentVersion, CancellationToken ct = default)
+    {
+        string current = currentVersion;
+        string releasesUrl = $"https://github.com/{owner}/{repo}/releases/latest";
 
         try
         {
-            var apiUrl = $"https://api.github.com/repos/{Owner}/{Repo}/releases/latest";
+            var apiUrl = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
             using var response = await Http.GetAsync(apiUrl, ct);
 
             // No releases published yet — treat as "up to date" rather than an error.
@@ -91,11 +101,11 @@ public static class UpdateService
 
             string notes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
             string htmlUrl = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : "";
-            if (!IsTrustedReleaseUrl(htmlUrl))
+            if (!IsTrustedReleaseUrl(htmlUrl, owner, repo))
                 htmlUrl = releasesUrl;
 
             (string? dlUrl, string? dlName) = newer && root.TryGetProperty("assets", out var assets)
-                ? PickAsset(assets)
+                ? PickAsset(assets, owner, repo)
                 : (null, null);
 
             return new UpdateInfo(newer, current, string.IsNullOrEmpty(latest) ? current : latest,
@@ -127,9 +137,48 @@ public static class UpdateService
         }
     }
 
+    /// <summary>Opens a trusted release/download URL for the given <paramref name="owner"/>/<paramref name="repo"/>
+    /// in the default browser, falling back to that repo's latest-release page.</summary>
+    public static void OpenInBrowser(string? url, string owner, string repo)
+    {
+        if (string.IsNullOrEmpty(url) || (!IsTrustedReleaseUrl(url, owner, repo) && !IsTrustedAssetUrl(url, owner, repo)))
+            url = $"https://github.com/{owner}/{repo}/releases/latest";
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Best effort.
+        }
+    }
+
+    /// <summary>Opens a repo's latest-release page in the browser (used by the Settings "Install" button).</summary>
+    public static void OpenReleasesPage(string owner, string repo) =>
+        OpenInBrowser(null, owner, repo);
+
+    /// <summary>Reads an installed executable's product/file version, or "0.0.0" when it can't be read.</summary>
+    public static string GetInstalledVersion(string? exePath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(exePath) || !System.IO.File.Exists(exePath))
+                return "0.0.0";
+
+            var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath);
+            var version = info.ProductVersion ?? info.FileVersion;
+            return string.IsNullOrWhiteSpace(version) ? "0.0.0" : version.Trim();
+        }
+        catch
+        {
+            return "0.0.0";
+        }
+    }
+
     // Pick the .exe asset matching this machine's CPU architecture, preferring the installer
     // (Setup-*.exe) over the portable build. Falls back to any .exe when no arch-specific match.
-    private static (string? url, string? name) PickAsset(JsonElement assets)
+    private static (string? url, string? name) PickAsset(JsonElement assets, string owner, string repo)
     {
         if (assets.ValueKind != JsonValueKind.Array)
             return (null, null);
@@ -145,7 +194,7 @@ public static class UpdateService
             string name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
             string url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() ?? "" : "";
 
-            if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !IsTrustedAssetUrl(url))
+            if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !IsTrustedAssetUrl(url, owner, repo))
                 continue;
 
             if (any.Url is null)
@@ -190,15 +239,19 @@ public static class UpdateService
         return new[] { Part(0), Part(1), Part(2) };
     }
 
-    private static bool IsTrustedReleaseUrl(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var u) &&
-        u.Scheme == Uri.UriSchemeHttps &&
-        u.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
-        u.AbsolutePath.StartsWith($"/{Owner}/{Repo}/", StringComparison.OrdinalIgnoreCase);
+    private static bool IsTrustedReleaseUrl(string url) => IsTrustedReleaseUrl(url, Owner, Repo);
 
-    private static bool IsTrustedAssetUrl(string url) =>
+    private static bool IsTrustedReleaseUrl(string url, string owner, string repo) =>
         Uri.TryCreate(url, UriKind.Absolute, out var u) &&
         u.Scheme == Uri.UriSchemeHttps &&
         u.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
-        u.AbsolutePath.StartsWith($"/{Owner}/{Repo}/releases/download/", StringComparison.OrdinalIgnoreCase);
+        u.AbsolutePath.StartsWith($"/{owner}/{repo}/", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTrustedAssetUrl(string url) => IsTrustedAssetUrl(url, Owner, Repo);
+
+    private static bool IsTrustedAssetUrl(string url, string owner, string repo) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) &&
+        u.Scheme == Uri.UriSchemeHttps &&
+        u.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
+        u.AbsolutePath.StartsWith($"/{owner}/{repo}/releases/download/", StringComparison.OrdinalIgnoreCase);
 }

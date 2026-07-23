@@ -1407,7 +1407,7 @@ public partial class M2CommanderWindow : Window
         if (cmd is not null && File.Exists(cmd.Path))
             return cmd.Path;
 
-        return CommanderTool.Catalog
+        return SupportApp.Catalog
             .FirstOrDefault(t => t.Label.StartsWith("Beyond Compare", StringComparison.OrdinalIgnoreCase))?
             .DetectPath();
     }
@@ -1553,7 +1553,7 @@ public partial class M2CommanderWindow : Window
 
     /// <summary>
     /// Resolves a launcher label to an executable path: first the matching catalog tool's known
-    /// install folders (commander-tools.json), then the app's file index by exe name / label.
+    /// install folders (default-app-list.json), then the app's file index by exe name / label.
     /// </summary>
     private string? DetectProgram(string? label)
     {
@@ -1561,7 +1561,7 @@ public partial class M2CommanderWindow : Window
         if (string.IsNullOrEmpty(name))
             return null;
 
-        var tool = CommanderTool.Catalog.FirstOrDefault(
+        var tool = SupportApp.Catalog.FirstOrDefault(
             t => string.Equals(t.Label, name, StringComparison.OrdinalIgnoreCase));
 
         // 1) Direct probe of the tool's known install folders.

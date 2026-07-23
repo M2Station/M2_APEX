@@ -22,7 +22,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\Strings.json" />
-    <EmbeddedResource Include="Assets\commander-tools.json" />
+    <EmbeddedResource Include="Assets\default-app-list.json" />
+    <EmbeddedResource Include="Assets\default-link-list.json" />
     <Resource Include="Assets\gif\*.gif" />
   </ItemGroup>
 
