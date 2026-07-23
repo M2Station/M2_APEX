@@ -259,6 +259,13 @@
                               Margin="0,0,0,12"
                               Foreground="{DynamicResource ThemeTextBrush}" />
 
+                    <CheckBox DockPanel.Dock="Top"
+                              x:Name="KeepFilterCheck"
+                              Content="{b:Loc commander.cmd.keepFilter}"
+                              FontSize="12.5"
+                              Margin="0,0,0,12"
+                              Foreground="{DynamicResource ThemeTextBrush}" />
+
                     <!-- Auto detect: fills M2_ST4 / M2_LOG / VS Code program paths from the index -->
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
                         <StackPanel Orientation="Horizontal">
