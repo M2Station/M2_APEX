@@ -20,6 +20,10 @@ public static class UpdateService
 
     private static readonly HttpClient Http = CreateClient();
 
+    // Separate client that does NOT auto-follow redirects, so the release-page fallback can
+    // read the Location header of github.com/.../releases/latest.
+    private static readonly HttpClient Redirectless = CreateRedirectlessClient();
+
     private static HttpClient CreateClient()
     {
         var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
@@ -27,6 +31,14 @@ public static class UpdateService
         http.DefaultRequestHeaders.UserAgent.ParseAdd("M2_APEX-Updater");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         http.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+        return http;
+    }
+
+    private static HttpClient CreateRedirectlessClient()
+    {
+        var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("M2_APEX-Updater");
         return http;
     }
 
@@ -88,8 +100,11 @@ public static class UpdateService
             if (response.StatusCode == HttpStatusCode.NotFound)
                 return new UpdateInfo(false, current, current, "", releasesUrl, null, null);
 
+            // Rate-limited or otherwise unavailable. Unauthenticated api.github.com allows only
+            // 60 requests/hour per IP, which a shared corporate NAT exhausts quickly (HTTP 403).
+            // Fall back to the github.com /releases/latest redirect, which is not API-rate-limited.
             if (!response.IsSuccessStatusCode)
-                return null;
+                return await CheckViaReleasesRedirectAsync(owner, repo, current, releasesUrl, ct);
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
@@ -113,7 +128,53 @@ public static class UpdateService
         }
         catch
         {
-            // Offline, timeout, or malformed response: quietly report "couldn't check".
+            // Offline, timeout, or malformed API response: try the redirect fallback before giving up.
+            return await CheckViaReleasesRedirectAsync(owner, repo, current, releasesUrl, ct);
+        }
+    }
+
+    /// <summary>
+    /// Resolves the latest release version without the rate-limited REST API by following the
+    /// <c>github.com/{owner}/{repo}/releases/latest</c> redirect: GitHub answers with a 302 whose
+    /// <c>Location</c> points at <c>/releases/tag/&lt;tag&gt;</c>. Returns <c>null</c> when there is no
+    /// published release or the request fails. Assets aren't enumerated here, so the caller opens the
+    /// release page to download.
+    /// </summary>
+    private static async Task<UpdateInfo?> CheckViaReleasesRedirectAsync(
+        string owner, string repo, string current, string releasesUrl, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, releasesUrl);
+            using var response = await Redirectless.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+            // A published release redirects to its tag page; anything else means "can't tell".
+            if ((int)response.StatusCode is < 300 or >= 400)
+                return null;
+
+            string location = response.Headers.Location?.ToString() ?? "";
+            const string marker = "/releases/tag/";
+            int idx = location.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0)
+                return null;
+
+            string tag = location[(idx + marker.Length)..].Trim('/');
+            string latest = tag.TrimStart('v', 'V');
+            if (string.IsNullOrEmpty(latest))
+                return null;
+
+            bool newer = IsNewer(latest, current);
+
+            string tagUrl = location.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? location
+                : $"https://github.com{(location.StartsWith('/') ? "" : "/")}{location}";
+            if (!IsTrustedReleaseUrl(tagUrl, owner, repo))
+                tagUrl = releasesUrl;
+
+            return new UpdateInfo(newer, current, latest, "", tagUrl, null, null);
+        }
+        catch
+        {
             return null;
         }
     }
