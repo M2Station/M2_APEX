@@ -27,9 +27,10 @@ public sealed class AppSettings
     public bool EnableQuickSwitch { get; set; } = true;
 
     /// <summary>
-    /// Ignore keystrokes not meant for this PC: injected/synthetic input, and — when a KVM tool
-    /// (Synergy / Barrier / Deskflow) is running — keys typed while the shared pointer has moved
-    /// to another computer. Stops M2_APEX reacting to input meant for the other machine.
+    /// Ignore keystrokes not meant for this PC: synthetic/injected input (macros, remote desktop), and —
+    /// when a KVM tool (Synergy / Barrier / Deskflow) is running — keys typed while the shared pointer is
+    /// on another computer. The shared keyboard is still accepted while this PC is the active KVM screen
+    /// (its pointer is visible), so double-Ctrl works on both the primary and secondary machines.
     /// </summary>
     public bool IgnoreForeignInput { get; set; } = true;
 
