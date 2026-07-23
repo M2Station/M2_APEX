@@ -155,13 +155,24 @@ public sealed class HotkeyService : IDisposable
 
     private bool IsForeignInput(NativeMethods.KBDLLHOOKSTRUCT data)
     {
-        // Synthetic keystrokes: a KVM client injecting the host's input, remote desktop, macros.
-        if ((data.flags & LlkhfInjected) != 0)
+        bool injected = (data.flags & LlkhfInjected) != 0;
+        bool pointerHidden = IsPointerHidden();
+
+        // On a KVM / mouse-sharing CLIENT (e.g. Synergy on the secondary PC) the shared keyboard is
+        // delivered as INJECTED input while this PC is the active screen — its pointer is visible. That
+        // is the legitimate local input here, so accept it; otherwise double-Ctrl / Alt+Space would never
+        // fire on the secondary machine (every tap looks synthetic).
+        if (injected && _kvmPresent && !pointerHidden)
+            return false;
+
+        // Other synthetic keystrokes — a macro, remote desktop, or a KVM injecting another host's input —
+        // are foreign.
+        if (injected)
             return true;
 
-        // A KVM (Synergy / Barrier / Deskflow…) is running and the local pointer is hidden — which
-        // is how those tools show the shared pointer has crossed to another PC — so keys are for it.
-        return _kvmPresent && IsPointerHidden();
+        // A KVM is running and the local pointer is hidden — this is how those tools show the shared
+        // pointer has crossed to another PC — so physical keys typed here are meant for that computer.
+        return _kvmPresent && pointerHidden;
     }
 
     private static bool IsPointerHidden()
