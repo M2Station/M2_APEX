@@ -1,0 +1,73 @@
+[
+  {
+    "Label": "M2_LOG",
+    "Arguments": "\"{path}\"",
+    "ExeNames": [ "M2_LOG", "M2LOG" ],
+    "SearchDirs": [
+      "%LOCALAPPDATA%\\Programs\\M2_LOG",
+      "%ProgramFiles%\\M2_LOG",
+      "%ProgramFiles(x86)%\\M2_LOG"
+    ],
+    "Repo": "M2Station/M2_LOG"
+  },
+  {
+    "Label": "M2_PROMPT",
+    "Arguments": "\"{path}\"",
+    "ExeNames": [ "M2_PROMPT", "M2PROMPT" ],
+    "SearchDirs": [
+      "%LOCALAPPDATA%\\Programs\\M2_PROMPT",
+      "%ProgramFiles%\\M2_PROMPT",
+      "%ProgramFiles(x86)%\\M2_PROMPT"
+    ],
+    "Repo": "M2Station/M2_PROMPT"
+  },
+  {
+    "Label": "M2_SCOUT",
+    "Arguments": "\"{path}\"",
+    "ExeNames": [ "M2_SCOUT", "M2SCOUT" ],
+    "SearchDirs": [
+      "%LOCALAPPDATA%\\Programs\\M2_SCOUT",
+      "%ProgramFiles%\\M2_SCOUT",
+      "%ProgramFiles(x86)%\\M2_SCOUT"
+    ],
+    "Repo": "M2Station/M2_SCOUT"
+  },
+  {
+    "Label": "M2_GIT_DIFF",
+    "Arguments": "-L \"{path}\"",
+    "ExeNames": [ "M2_GIT_DIFF", "M2GITDIFF" ],
+    "SearchDirs": [
+      "%LOCALAPPDATA%\\Programs\\M2_GIT_DIFF",
+      "%ProgramFiles%\\M2_GIT_DIFF",
+      "%ProgramFiles(x86)%\\M2_GIT_DIFF"
+    ],
+    "Repo": "M2Station/M2_GIT_DIFF"
+  },
+  {
+    "Label": "M2_ST4",
+    "Arguments": "\"{path}\"",
+    "ExeNames": [ "M2_ST4", "M2ST4" ],
+    "SearchDirs": []
+  },
+  {
+    "Label": "Beyond Compare P1:P2",
+    "Arguments": "\"{left}\" \"{right}\"",
+    "ExeNames": [ "BCompare", "BComp" ],
+    "SearchDirs": [
+      "%ProgramFiles%\\Beyond Compare 5",
+      "%ProgramFiles%\\Beyond Compare 4",
+      "%ProgramFiles(x86)%\\Beyond Compare 4",
+      "%ProgramFiles(x86)%\\Beyond Compare 3"
+    ]
+  },
+  {
+    "Label": "VS Code",
+    "Arguments": "\"{path}\"",
+    "ExeNames": [ "Code" ],
+    "SearchDirs": [
+      "%LOCALAPPDATA%\\Programs\\Microsoft VS Code",
+      "%ProgramFiles%\\Microsoft VS Code",
+      "%ProgramFiles(x86)%\\Microsoft VS Code"
+    ]
+  }
+]

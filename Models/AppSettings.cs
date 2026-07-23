@@ -70,8 +70,9 @@ public sealed class AppSettings
     /// <see cref="SearchLink.Target"/> (an app / folder / UNC path or URL); the optional
     /// <see cref="SearchLink.Arguments"/> may contain <c>{path}</c>, replaced at launch with the
     /// folder that was focused (e.g. the front Explorer window) when the search bar opened.
+    /// Seeded on first run with the first-party M2 apps from the tool catalog (auto-detected).
     /// </summary>
-    public List<SearchLink> SearchLinks { get; set; } = new();
+    public List<SearchLink> SearchLinks { get; set; } = SearchLink.DefaultSeed();
 
     /// <summary>Active colour theme id (see <c>Listly.Services.ThemeManager</c>).</summary>
     public string Theme { get; set; } = "low_key";
@@ -232,11 +233,11 @@ public sealed class CommanderCommand : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     /// <summary>
-    /// The example launcher entries created on first run, built from the tool catalog
-    /// (<c>Assets/commander-tools.json</c>) with each tool's executable auto-detected where possible.
+    /// The example launcher entries created on first run, built from the shared app catalog
+    /// (<c>Assets/default-app-list.json</c>) with each tool's executable auto-detected where possible.
     /// </summary>
     public static List<CommanderCommand> DefaultSeed() =>
-        CommanderTool.Catalog.Select(t => new CommanderCommand
+        SupportApp.Catalog.Select(t => new CommanderCommand
         {
             Label = t.Label,
             Path = t.DetectPath() ?? string.Empty,
@@ -271,11 +272,12 @@ public sealed class CommanderLink : INotifyPropertyChanged
     private void OnChanged(string name) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    /// <summary>The default quick links created on first run.</summary>
-    public static List<CommanderLink> DefaultSeed() => new()
-    {
-        new CommanderLink { Name = "M2_STATION", Target = @"\\192.168.100.168" },
-    };
+    /// <summary>
+    /// The default quick links created on first run, from the shared link catalog
+    /// (<c>Assets/default-link-list.json</c>) so M2_APEX and M2 Commander stay in sync.
+    /// </summary>
+    public static List<CommanderLink> DefaultSeed() =>
+        SupportLink.Catalog.Select(l => new CommanderLink { Name = l.Name, Target = l.Target }).ToList();
 }
 
 /// <summary>
@@ -315,4 +317,32 @@ public sealed class SearchLink : INotifyPropertyChanged
 
     private void OnChanged(string name) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    /// <summary>
+    /// The default quick picks created on first run: one per first-party M2 app in the shared app catalog
+    /// (<c>Assets/default-app-list.json</c>, executable auto-detected) followed by every link in the shared
+    /// link catalog (<c>Assets/default-link-list.json</c>). Apps whose program is not found are still seeded
+    /// (blank target) so Settings can offer an Install button; a blank target is hidden from the search list.
+    /// </summary>
+    public static List<SearchLink> DefaultSeed()
+    {
+        var picks = SupportApp.Catalog
+            .Where(t => t.IsApp)
+            .Select(t => new SearchLink
+            {
+                Name = t.Label,
+                Target = t.DetectPath() ?? string.Empty,
+                Arguments = string.IsNullOrEmpty(t.Arguments) ? string.Empty : t.Arguments
+            })
+            .ToList();
+
+        picks.AddRange(SupportLink.Catalog.Select(l => new SearchLink
+        {
+            Name = l.Name,
+            Target = l.Target,
+            Arguments = l.Arguments ?? string.Empty
+        }));
+
+        return picks;
+    }
 }
