@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 
 using Microsoft.Win32;
 
@@ -27,6 +28,9 @@ public static class SystemLog
     public static string Folder => Channel.Folder;
     public static string FilePath => Channel.FilePath;
 
+    /// <summary>Best-effort clear of the system log file; the next write starts a fresh session header.</summary>
+    public static void Clear() => Channel.Clear();
+
     /// <summary>Records a one-time snapshot of the machine + OS + power + boot state at startup.</summary>
     public static void Snapshot()
     {
@@ -43,6 +47,19 @@ public static class SystemLog
             try { power = Forms.SystemInformation.PowerStatus.PowerLineStatus.ToString(); }
             catch { power = "?"; }
 
+            string elevated;
+            try
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                bool admin = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+                // A non-elevated hook is starved of input while an ELEVATED window is focused (UIPI), so a
+                // hotkey that works everywhere except one app usually means THAT app runs as admin.
+                elevated = admin
+                    ? "Yes (as admin)"
+                    : "No (hotkey will not fire while an elevated window — e.g. an admin VS Code/terminal — is focused)";
+            }
+            catch { elevated = "?"; }
+
             var lines = new[]
             {
                 $"app version   : v{version}",
@@ -50,8 +67,9 @@ public static class SystemLog
                 $"architecture  : OS {RuntimeInformation.OSArchitecture} / process {RuntimeInformation.ProcessArchitecture}",
                 $".NET          : {RuntimeInformation.FrameworkDescription}",
                 $"CPU cores     : {Environment.ProcessorCount}",
-                $"system uptime : {uptime:hh\\:mm\\:ss} (time since Windows booted \u2014 small = launched right after boot)",
+                $"system uptime : {uptime:hh\\:mm\\:ss} (time since Windows booted — small = launched right after boot)",
                 $"process start : {proc.StartTime:yyyy-MM-dd HH:mm:ss}",
+                $"elevated      : {elevated}",
                 $"power line    : {power}",
                 $"working set   : {proc.WorkingSet64 / (1024 * 1024)} MB",
             };

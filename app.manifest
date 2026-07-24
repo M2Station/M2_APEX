@@ -5,8 +5,12 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- Run without elevation so the search bar can appear over normal apps. -->
-        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+        <!-- Run with the highest rights the user has. For an administrator this elevates M2_APEX so its
+             global double-Ctrl / Alt+Space hook still fires while an ELEVATED window (e.g. an admin VS
+             Code or terminal) is focused — a non-elevated hook is starved of those keys by Windows UIPI.
+             For a standard user it runs un-elevated (same as before). Apps launched FROM M2_APEX are
+             de-elevated back to the interactive user (see ProcessLauncher) so they do not inherit admin. -->
+        <requestedExecutionLevel level="highestAvailable" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

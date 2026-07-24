@@ -74,6 +74,7 @@ public partial class App : System.Windows.Application
         SystemLog.Enabled = _settings.EnableSystemLog;
         SearchLog.Enabled = _settings.EnableSearchLog;
         IndexLog.Enabled = _settings.EnableIndexLog;
+        HotkeyLog.Enabled = _settings.EnableHotkeyLog;
         PerfLog.Mark("startup: settings loaded");
         SystemLog.Snapshot();
         SystemLog.HookPowerEvents();
@@ -108,6 +109,11 @@ public partial class App : System.Windows.Application
         SetupTray();
         StartBackgroundIndexing();
         StartUpdateCheck();
+
+        // If we run elevated and the user had enabled autostart via the Run key (which cannot launch an
+        // elevated app at logon), migrate it to a highest-privileges scheduled task — off the UI thread.
+        _ = Task.Run(StartupService.SyncElevatedStartup);
+
         PerfLog.Mark("startup: initialization complete");
     }
 

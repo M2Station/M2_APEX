@@ -66,6 +66,19 @@ public static class PerfLog
         Write($"[+{SinceStart()}] {label}: {ms:F1} ms");
     }
 
+    /// <summary>
+    /// Empties the performance log. Runs under the same lock as <see cref="Write"/> so it never races a
+    /// concurrent write, and re-arms the session header so the next write starts a fresh session.
+    /// </summary>
+    public static void Clear()
+    {
+        lock (_gate)
+        {
+            CrashLog.TryClearFile(FilePath);
+            _sessionStarted = false;
+        }
+    }
+
     private static string SinceStart()
     {
         double seconds = Math.Max(0, (DateTime.Now - ProcessStart).TotalSeconds);

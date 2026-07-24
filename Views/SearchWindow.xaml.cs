@@ -71,10 +71,22 @@ public partial class SearchWindow : Window
 
     public void ToggleSearch()
     {
-        if (IsVisible)
+        // Only treat the gesture as "hide" when the search bar is the window the user is actually
+        // looking at (visible AND the foreground window). If it is visible but sitting behind another
+        // window — e.g. a previous ShowSearch lost the Windows foreground-lock race and never became
+        // active, so Deactivated never fired to hide it — the gesture means "bring it to me". Showing
+        // again re-runs the foreground grab instead of silently toggling the hidden bar off.
+        if (IsVisible && IsForegroundWindow())
             HideSearch();
         else
             ShowSearch();
+    }
+
+    /// <summary>True when this window currently owns the foreground (has keyboard focus).</summary>
+    private bool IsForegroundWindow()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        return hwnd != IntPtr.Zero && hwnd == NativeMethods.GetForegroundWindow();
     }
 
     public void ShowSearch()

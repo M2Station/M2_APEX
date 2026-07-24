@@ -80,4 +80,18 @@ public sealed class DebugChannel
         string captured = line;
         _ = Task.Run(() => Append(captured));
     }
+
+    /// <summary>
+    /// Empties this channel's log file. Runs under the same lock as <see cref="Append"/>, so it never
+    /// races a concurrent write, and re-arms the session header so the next write starts a fresh session.
+    /// Best effort — never throws.
+    /// </summary>
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            CrashLog.TryClearFile(FilePath);
+            _sessionStarted = false;
+        }
+    }
 }

@@ -187,7 +187,7 @@ public static class UpdateService
 
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            ProcessLauncher.Start(new System.Diagnostics.ProcessStartInfo(url)
             {
                 UseShellExecute = true
             });
@@ -207,7 +207,7 @@ public static class UpdateService
 
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            ProcessLauncher.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch
         {

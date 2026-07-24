@@ -99,6 +99,7 @@ public partial class SettingsWindow : Window
         SystemLogBox.IsChecked = _settings.EnableSystemLog;
         SearchLogBox.IsChecked = _settings.EnableSearchLog;
         IndexLogBox.IsChecked = _settings.EnableIndexLog;
+        HotkeyLogBox.IsChecked = _settings.EnableHotkeyLog;
         VersionText.Text = Loc.T("settings.version", UpdateService.CurrentVersion);
         ShowStartupStatus();
     }
@@ -115,10 +116,12 @@ public partial class SettingsWindow : Window
         _settings.EnableSystemLog = SystemLogBox.IsChecked == true;
         _settings.EnableSearchLog = SearchLogBox.IsChecked == true;
         _settings.EnableIndexLog = IndexLogBox.IsChecked == true;
+        _settings.EnableHotkeyLog = HotkeyLogBox.IsChecked == true;
         PerfLog.Enabled = _settings.EnablePerformanceLog;
         SystemLog.Enabled = _settings.EnableSystemLog;
         SearchLog.Enabled = _settings.EnableSearchLog;
         IndexLog.Enabled = _settings.EnableIndexLog;
+        HotkeyLog.Enabled = _settings.EnableHotkeyLog;
         _settings.SearchBarPosition = (BarPosition)Math.Max(0, SearchPosBox.SelectedIndex);
         _settings.QuickSwitchPosition = (BarPosition)Math.Max(0, QuickPosBox.SelectedIndex);
 
@@ -391,7 +394,7 @@ public partial class SettingsWindow : Window
     {
         try
         {
-            Process.Start(new ProcessStartInfo("https://github.com/oahsiao") { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo("https://github.com/oahsiao") { UseShellExecute = true });
         }
         catch
         {
@@ -400,6 +403,44 @@ public partial class SettingsWindow : Window
     }
 
     private void OnOpenDebugLogClick(object sender, RoutedEventArgs e) => CrashLog.OpenFolder();
+
+    /// <summary>
+    /// Empties every log in the DEBUG_LOG folder. Each channel clears under its own write lock (so an
+    /// in-flight write never blocks the delete), then a sweep removes any leftover *.log files. This is
+    /// the reliable way to start from a clean slate before reproducing an issue — unlike deleting the
+    /// files by hand in Explorer, which can fail with “file in use” while the app is running.
+    /// </summary>
+    private void OnClearDebugLogClick(object sender, RoutedEventArgs e)
+    {
+        var confirm = System.Windows.MessageBox.Show(this,
+            Loc.T("settings.clearDebugLogConfirm"), Loc.T("settings.clearDebugLog"),
+            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        // Clear the known channels first so each also re-arms its session header for the next write.
+        PerfLog.Clear();
+        SystemLog.Clear();
+        SearchLog.Clear();
+        IndexLog.Clear();
+        HotkeyLog.Clear();
+        CrashLog.Clear();
+
+        // Sweep any remaining *.log files (e.g. from an older build) so the folder is truly empty.
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(CrashLog.Folder, "*.log"))
+                CrashLog.TryClearFile(file);
+        }
+        catch
+        {
+            // Folder missing or unreadable; nothing to sweep.
+        }
+
+        System.Windows.MessageBox.Show(this,
+            Loc.T("settings.clearDebugLogDone"), Loc.T("settings.clearDebugLog"),
+            MessageBoxButton.OK, MessageBoxImage.Information);
+    }
 
     private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
     {

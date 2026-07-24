@@ -18,6 +18,9 @@ public static class SearchLog
     public static string Folder => Channel.Folder;
     public static string FilePath => Channel.FilePath;
 
+    /// <summary>Best-effort clear of the search log file; the next write starts a fresh session header.</summary>
+    public static void Clear() => Channel.Clear();
+
     /// <summary>Records one executed search. An empty <paramref name="query"/> = the initial (recent) list.</summary>
     public static void LogQuery(string query, int resultCount, double elapsedMs)
     {

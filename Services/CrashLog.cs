@@ -60,4 +60,35 @@ public static class CrashLog
             // Best effort.
         }
     }
+
+    /// <summary>Best-effort clear of the crash log itself.</summary>
+    public static void Clear() => TryClearFile(FilePath);
+
+    /// <summary>
+    /// Best-effort clear of a single log file. Deletes it, or — if another process still holds the file
+    /// (e.g. it is open in an editor) — truncates it to zero bytes with a shared handle so the "app is
+    /// using the file" case still ends up empty. Never throws.
+    /// </summary>
+    internal static void TryClearFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+                return;
+
+            File.Delete(path);
+        }
+        catch
+        {
+            try
+            {
+                // The file is held by another process; empty its contents in place instead of deleting.
+                using var _ = new FileStream(path, FileMode.Truncate, FileAccess.Write, FileShare.ReadWrite);
+            }
+            catch
+            {
+                // Locked exclusively by another process; nothing more we can safely do.
+            }
+        }
+    }
 }

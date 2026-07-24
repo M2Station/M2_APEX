@@ -468,7 +468,12 @@
             <TabItem Header="{b:Loc settings.tab.debug}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="{b:Loc settings.performance}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <TextBlock Text="{b:Loc settings.hotkeyHeader}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <CheckBox x:Name="HotkeyLogBox" Content="{b:Loc settings.hotkeyLog}" />
+                        <TextBlock Text="{b:Loc settings.hotkeyLogHint}" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                        <TextBlock Text="{b:Loc settings.performance}" Style="{StaticResource Header}" />
                         <CheckBox x:Name="PerformanceLogBox" Content="{b:Loc settings.performanceLog}" />
                         <TextBlock Text="{b:Loc settings.performanceLogHint}" TextWrapping="Wrap"
                                    Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
@@ -492,6 +497,8 @@
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="DebugLogButton" Content="{b:Loc settings.openDebugLog}"
                                     Padding="12,6" Click="OnOpenDebugLogClick" />
+                            <Button x:Name="ClearDebugLogButton" Content="{b:Loc settings.clearDebugLog}"
+                                    Padding="12,6" Margin="8,0,0,0" Click="OnClearDebugLogClick" />
                             <TextBlock x:Name="DebugLogPathText" VerticalAlignment="Center" Margin="14,0,0,0"
                                        Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>

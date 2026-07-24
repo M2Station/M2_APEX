@@ -19,6 +19,9 @@ public static class IndexLog
     public static string Folder => Channel.Folder;
     public static string FilePath => Channel.FilePath;
 
+    /// <summary>Best-effort clear of the index log file; the next write starts a fresh session header.</summary>
+    public static void Clear() => Channel.Clear();
+
     /// <summary>Records that the index was served from the on-disk cache — the fast path, no rebuild.</summary>
     public static void LogCacheLoaded(int itemCount, double elapsedMs)
     {
