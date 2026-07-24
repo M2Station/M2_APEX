@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using Listly.Models;
@@ -83,7 +84,10 @@ public sealed class SearchViewModel : INotifyPropertyChanged
     /// <summary>Populates the list without a query (recent / frequent items).</summary>
     public void ShowInitial()
     {
+        var sw = SearchLog.Enabled ? Stopwatch.StartNew() : null;
         var results = _engine.Search(string.Empty);
+        if (sw is not null)
+            SearchLog.LogQuery(string.Empty, results.Count, sw.Elapsed.TotalMilliseconds);
         Replace(results);
     }
 
@@ -107,7 +111,10 @@ public sealed class SearchViewModel : INotifyPropertyChanged
         try
         {
             await Task.Delay(90, token);
+            var sw = SearchLog.Enabled ? Stopwatch.StartNew() : null;
             var results = await Task.Run(() => _engine.Search(query), token);
+            if (sw is not null)
+                SearchLog.LogQuery(query, results.Count, sw.Elapsed.TotalMilliseconds);
             if (token.IsCancellationRequested)
                 return;
 

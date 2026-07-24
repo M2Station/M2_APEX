@@ -57,6 +57,18 @@ public sealed class AppSettings
 
     public bool ShowFilesFirst { get; set; }
 
+    /// <summary>When true, M2_APEX writes startup &amp; activation timings to <c>DEBUG_LOG\performance.log</c>.</summary>
+    public bool EnablePerformanceLog { get; set; }
+
+    /// <summary>When true, logs a Windows environment snapshot + sleep/resume events to <c>DEBUG_LOG\system.log</c>.</summary>
+    public bool EnableSystemLog { get; set; }
+
+    /// <summary>When true, logs each search's query, result count and elapsed time to <c>DEBUG_LOG\search.log</c>.</summary>
+    public bool EnableSearchLog { get; set; }
+
+    /// <summary>When true, logs per-drive index scan timings to <c>DEBUG_LOG\index.log</c>.</summary>
+    public bool EnableIndexLog { get; set; }
+
     /// <summary>
     /// Ordered list of locations that rank search results higher (earlier entries win).
     /// Each entry is a folder path (e.g. <c>C:\</c>, <c>D:\Projects</c>, <c>%USERPROFILE%\src</c>)

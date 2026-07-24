@@ -136,11 +136,14 @@ public sealed class HotkeyService : IDisposable
 
                 if (_lastCtrlTapTime != 0 && delta > 0 && delta <= _settings.DoubleCtrlThresholdMs)
                 {
+                    LogDoubleCtrl(delta, triggered: true);
                     _lastCtrlTapTime = 0;
                     RaiseTriggered();
                 }
                 else
                 {
+                    if (_lastCtrlTapTime != 0 && delta > 0)
+                        LogDoubleCtrl(delta, triggered: false);
                     _lastCtrlTapTime = now;
                 }
             }
@@ -151,6 +154,21 @@ public sealed class HotkeyService : IDisposable
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Records the gap between the two Ctrl taps to the performance log so the double-Ctrl threshold can
+    /// be tuned from real data. Off-loaded to the thread pool: the low-level keyboard hook thread must
+    /// never block on disk I/O (it runs under a system timeout).
+    /// </summary>
+    private void LogDoubleCtrl(int deltaMs, bool triggered)
+    {
+        if (!PerfLog.Enabled)
+            return;
+
+        int threshold = _settings.DoubleCtrlThresholdMs;
+        string outcome = triggered ? "triggered" : "too slow (> threshold)";
+        _ = Task.Run(() => PerfLog.Mark($"double-Ctrl gap {deltaMs} ms (threshold {threshold} ms) \u2192 {outcome}"));
     }
 
     private bool IsForeignInput(NativeMethods.KBDLLHOOKSTRUCT data)

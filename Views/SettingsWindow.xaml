@@ -438,14 +438,6 @@
                                        Foreground="{DynamicResource ThemeSubtleBrush}" TextWrapping="Wrap" />
                         </StackPanel>
 
-                        <TextBlock Text="{b:Loc settings.diagnostics}" Style="{StaticResource Header}" />
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="CrashLogButton" Content="{b:Loc settings.openCrashLog}"
-                                    Padding="12,6" Click="OnOpenCrashLogClick" />
-                            <TextBlock x:Name="CrashLogPathText" VerticalAlignment="Center" Margin="14,0,0,0"
-                                       Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-
                         <TextBlock Text="{b:Loc settings.reset}" Style="{StaticResource Header}" />
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="FactoryResetButton" Content="{b:Loc settings.factoryReset}"
@@ -468,6 +460,43 @@
                             <TextBlock Text="&#x2197;" VerticalAlignment="Center" Margin="5,0,0,0"
                                        FontSize="10" Foreground="{DynamicResource ThemeSubtleBrush}" />
                         </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- =============================== Debug ============================= -->
+            <TabItem Header="{b:Loc settings.tab.debug}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="{b:Loc settings.performance}" Style="{StaticResource Header}" Margin="0,0,0,6" />
+                        <CheckBox x:Name="PerformanceLogBox" Content="{b:Loc settings.performanceLog}" />
+                        <TextBlock Text="{b:Loc settings.performanceLogHint}" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                        <TextBlock Text="{b:Loc settings.systemHeader}" Style="{StaticResource Header}" />
+                        <CheckBox x:Name="SystemLogBox" Content="{b:Loc settings.systemLog}" />
+                        <TextBlock Text="{b:Loc settings.systemLogHint}" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                        <TextBlock Text="{b:Loc settings.searchHeader}" Style="{StaticResource Header}" />
+                        <CheckBox x:Name="SearchLogBox" Content="{b:Loc settings.searchLog}" />
+                        <TextBlock Text="{b:Loc settings.searchLogHint}" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                        <TextBlock Text="{b:Loc settings.indexHeader}" Style="{StaticResource Header}" />
+                        <CheckBox x:Name="IndexLogBox" Content="{b:Loc settings.indexLog}" />
+                        <TextBlock Text="{b:Loc settings.indexLogHint}" TextWrapping="Wrap"
+                                   Margin="0,2,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
+
+                        <TextBlock Text="{b:Loc settings.diagnostics}" Style="{StaticResource Header}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="DebugLogButton" Content="{b:Loc settings.openDebugLog}"
+                                    Padding="12,6" Click="OnOpenDebugLogClick" />
+                            <TextBlock x:Name="DebugLogPathText" VerticalAlignment="Center" Margin="14,0,0,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <TextBlock Text="{b:Loc settings.debugFilesHint}" TextWrapping="Wrap"
+                                   Margin="0,8,0,0" Foreground="{DynamicResource ThemeSubtleBrush}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
