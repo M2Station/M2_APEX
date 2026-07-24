@@ -69,5 +69,17 @@
       "%ProgramFiles%\\Microsoft VS Code",
       "%ProgramFiles(x86)%\\Microsoft VS Code"
     ]
+  },
+  {
+    "Label": "PowerShell",
+    "Arguments": "-NoExit -Command \"Set-Location -LiteralPath '{path}'\"",
+    "ExeNames": [ "pwsh", "powershell" ],
+    "SearchDirs": [
+      "%ProgramFiles%\\PowerShell\\7",
+      "%ProgramFiles(x86)%\\PowerShell\\7",
+      "%ProgramW6432%\\PowerShell\\7",
+      "%LOCALAPPDATA%\\Microsoft\\PowerShell\\7",
+      "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0"
+    ]
   }
 ]

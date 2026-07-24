@@ -314,6 +314,7 @@ public sealed class SearchLink : INotifyPropertyChanged
     private string _name = string.Empty;
     private string _target = string.Empty;
     private string _arguments = string.Empty;
+    private bool _admin;
 
     /// <summary>Text shown in the search result (falls back to <see cref="Target"/> when blank).</summary>
     public string Name
@@ -334,6 +335,13 @@ public sealed class SearchLink : INotifyPropertyChanged
     {
         get => _arguments;
         set { if (_arguments != value) { _arguments = value; OnChanged(nameof(Arguments)); } }
+    }
+
+    /// <summary>Launch the target elevated (Run as administrator, via the UAC "runas" verb).</summary>
+    public bool Admin
+    {
+        get => _admin;
+        set { if (_admin != value) { _admin = value; OnChanged(nameof(Admin)); } }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

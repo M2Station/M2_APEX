@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Principal;
+using System.Text.RegularExpressions;
 
 using Microsoft.Win32;
 
@@ -58,11 +59,18 @@ public static class StartupService
     /// <summary>The executable path registered to launch at startup (quotes / args stripped), or null.</summary>
     public static string? GetRegisteredPath()
     {
-        // When the scheduled task drives startup it points at this build, so report the current exe.
+        // When the scheduled task drives startup, read its real target so a copy mismatch stays visible.
+        // Fall back to the current exe only if the task's command can't be read.
         if (ProcessLauncher.IsElevated && TaskExists())
-            return Environment.ProcessPath;
+            return GetTaskExePath() ?? Environment.ProcessPath;
 
-        var cmd = GetRegisteredCommand()?.Trim();
+        return ParseExePath(GetRegisteredCommand());
+    }
+
+    /// <summary>Extracts the executable path from a Run-key command line (leading quotes / args stripped).</summary>
+    private static string? ParseExePath(string? command)
+    {
+        var cmd = command?.Trim();
         if (string.IsNullOrEmpty(cmd))
             return null;
 
@@ -166,7 +174,34 @@ public static class StartupService
         return RunSchtasks("/Delete", "/TN", TaskName, "/F");
     }
 
-    private static bool RunSchtasks(params string[] args)
+    /// <summary>The executable the logon task launches (its <c>&lt;Command&gt;</c>), or null if unreadable.</summary>
+    private static string? GetTaskExePath()
+    {
+        // schtasks emits the task as XML whose declaration wrongly claims UTF-16 while the bytes are
+        // single-byte, so an XML parser throws — extract the <Command> element with a regex instead.
+        var xml = QuerySchtasks("/Query", "/TN", TaskName, "/XML");
+        if (string.IsNullOrEmpty(xml))
+            return null;
+
+        var m = Regex.Match(xml, "<Command>(?<cmd>.*?)</Command>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        if (!m.Success)
+            return null;
+
+        // <Command> holds the whole executable path (arguments live in <Arguments>), so only strip a
+        // surrounding quote pair and expand any environment variables schtasks may have stored.
+        var cmd = System.Net.WebUtility.HtmlDecode(m.Groups["cmd"].Value).Trim();
+        if (cmd.Length >= 2 && cmd[0] == '"' && cmd[^1] == '"')
+            cmd = cmd.Substring(1, cmd.Length - 2);
+
+        cmd = Environment.ExpandEnvironmentVariables(cmd).Trim();
+        return string.IsNullOrEmpty(cmd) ? null : cmd;
+    }
+
+    private static bool RunSchtasks(params string[] args) => QuerySchtasks(args) is not null;
+
+    /// <summary>Runs <c>schtasks.exe</c> and returns its stdout on success (exit 0), or null on failure.</summary>
+    private static string? QuerySchtasks(params string[] args)
     {
         try
         {
@@ -182,18 +217,18 @@ public static class StartupService
 
             using var proc = Process.Start(psi);
             if (proc is null)
-                return false;
+                return null;
 
             // Drain output (small) before waiting so the pipe can never block the child.
-            _ = proc.StandardOutput.ReadToEnd();
+            string output = proc.StandardOutput.ReadToEnd();
             _ = proc.StandardError.ReadToEnd();
             proc.WaitForExit(10000);
 
-            return proc.HasExited && proc.ExitCode == 0;
+            return proc.HasExited && proc.ExitCode == 0 ? output : null;
         }
         catch
         {
-            return false;
+            return null;
         }
     }
 }
