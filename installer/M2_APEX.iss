@@ -1,6 +1,12 @@
 ; Inno Setup script for M2_APEX.
-; Wraps the self-contained single-file EXE into a per-user installer (no admin required):
+; Wraps the self-contained single-file EXE into a per-user installer (no admin required to install):
 ; Start Menu shortcut, optional desktop icon, uninstaller, and launch-after-install.
+;
+; The app manifest requests highestAvailable, so M2_APEX elevates at runtime (a UAC prompt on launch
+; for administrators); this lets its global hotkey fire over elevated windows. The install itself
+; stays per-user / non-elevated. "Launch at startup" registers a per-user autostart: a highest-
+; privileges scheduled task named "M2_APEX" when elevated, or an HKCU\...\Run value otherwise. The
+; [UninstallRun] section below removes both on uninstall (best effort) so nothing points at a deleted EXE.
 ;
 ; Build (per architecture), e.g.:
 ;   ISCC.exe /DAppVersion=0.0.1 /DArch=x64 /DSourceExe=path\to\M2_APEX.exe /DOutDir=dist installer\M2_APEX.iss
@@ -54,3 +60,9 @@ Name: "{autodesktop}\M2_APEX"; Filename: "{app}\M2_APEX.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\M2_APEX.exe"; Description: "{cm:LaunchProgram,M2_APEX}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Remove the per-user "launch at startup" entries the app may have created, so uninstalling does not
+; leave an autostart pointing at a deleted EXE. Both are best effort, hidden, and harmless if absent.
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""M2_APEX"" /F"; Flags: runhidden; RunOnceId: "DelM2ApexTask"
+Filename: "{sys}\reg.exe"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""M2_APEX"" /f"; Flags: runhidden; RunOnceId: "DelM2ApexRunValue"
