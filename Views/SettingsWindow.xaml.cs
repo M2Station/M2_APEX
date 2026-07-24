@@ -42,7 +42,7 @@ public partial class SettingsWindow : Window
         CreditLogo.Data = Assets.M2Logo.Geometry;
         HeaderLogo.Data = Assets.M2Logo.Geometry;
         HeaderVersion.Text = $"v{UpdateService.CurrentVersion}";
-        CrashLogPathText.Text = CrashLog.Folder;
+        DebugLogPathText.Text = CrashLog.Folder;
         UpdateTitle();
     }
 
@@ -95,6 +95,10 @@ public partial class SettingsWindow : Window
         DrivesBox.Text = string.Join(Environment.NewLine, _settings.IndexedDrives);
         ExcludedBox.Text = string.Join(Environment.NewLine, _settings.ExcludedFolders);
         StartupBox.IsChecked = StartupService.IsEnabled();
+        PerformanceLogBox.IsChecked = _settings.EnablePerformanceLog;
+        SystemLogBox.IsChecked = _settings.EnableSystemLog;
+        SearchLogBox.IsChecked = _settings.EnableSearchLog;
+        IndexLogBox.IsChecked = _settings.EnableIndexLog;
         VersionText.Text = Loc.T("settings.version", UpdateService.CurrentVersion);
         ShowStartupStatus();
     }
@@ -107,6 +111,14 @@ public partial class SettingsWindow : Window
         _settings.IgnoreForeignInput = ForeignInputBox.IsChecked == true;
         _settings.ShowFilesFirst = FilesFirstBox.IsChecked == true;
         _settings.IndexHiddenFiles = HiddenBox.IsChecked == true;
+        _settings.EnablePerformanceLog = PerformanceLogBox.IsChecked == true;
+        _settings.EnableSystemLog = SystemLogBox.IsChecked == true;
+        _settings.EnableSearchLog = SearchLogBox.IsChecked == true;
+        _settings.EnableIndexLog = IndexLogBox.IsChecked == true;
+        PerfLog.Enabled = _settings.EnablePerformanceLog;
+        SystemLog.Enabled = _settings.EnableSystemLog;
+        SearchLog.Enabled = _settings.EnableSearchLog;
+        IndexLog.Enabled = _settings.EnableIndexLog;
         _settings.SearchBarPosition = (BarPosition)Math.Max(0, SearchPosBox.SelectedIndex);
         _settings.QuickSwitchPosition = (BarPosition)Math.Max(0, QuickPosBox.SelectedIndex);
 
@@ -387,7 +399,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void OnOpenCrashLogClick(object sender, RoutedEventArgs e) => CrashLog.OpenFolder();
+    private void OnOpenDebugLogClick(object sender, RoutedEventArgs e) => CrashLog.OpenFolder();
 
     private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
     {

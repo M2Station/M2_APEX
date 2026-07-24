@@ -5,14 +5,14 @@ using System.Reflection;
 namespace Listly.Services;
 
 /// <summary>
-/// Centralized crash / diagnostics logging to <c>%AppData%\M2_APEX\crash.log</c>, plus a helper
-/// that reveals the folder in File Explorer so logs are easy to grab for later debugging.
+/// Centralized crash / diagnostics logging to <c>%AppData%\M2_APEX\DEBUG_LOG\crash.log</c>, plus a
+/// helper that reveals the folder in File Explorer so logs are easy to grab for later debugging.
 /// </summary>
 public static class CrashLog
 {
-    /// <summary>Folder that holds the crash log (shared with the app's other data files).</summary>
+    /// <summary>Folder that holds the debug logs (crash log + opt-in performance log).</summary>
     public static string Folder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "M2_APEX", "DEBUG_LOG");
 
     /// <summary>Full path to the crash log file.</summary>
     public static string FilePath => Path.Combine(Folder, "crash.log");

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 
 namespace Listly.Services;
@@ -67,7 +68,12 @@ public sealed class FileIndexService
         try
         {
             if (!File.Exists(CachePath))
+            {
+                IndexLog.LogNoCache();
                 return;
+            }
+
+            long start = IndexLog.Enabled ? Stopwatch.GetTimestamp() : 0;
 
             // Stream the file (no giant string[] from ReadAllLines) to keep peak memory low.
             var list = new List<IndexItem>(1 << 19);
@@ -81,6 +87,8 @@ public sealed class FileIndexService
             }
 
             _items = list.ToArray();
+            IndexLog.LogCacheLoaded(_items.Length,
+                IndexLog.Enabled ? Stopwatch.GetElapsedTime(start).TotalMilliseconds : 0);
             StatusChanged?.Invoke(Loc.T("index.loaded", _items.Length.ToString("N0")));
         }
         catch
@@ -141,10 +149,22 @@ public sealed class FileIndexService
 
             int lastReported = 0;
 
+            // Per-drive scan timing — only when the index log is on. Snapshot the flag so it stays
+            // consistent for the whole build; each directory's scan time is attributed to its drive
+            // root, so the existing (drive-interleaved) scan order and results are unchanged.
+            bool logIndex = IndexLog.Enabled;
+            long buildStart = logIndex ? Stopwatch.GetTimestamp() : 0;
+            var perDrive = logIndex
+                ? new Dictionary<string, (double Ms, int Count)>(StringComparer.OrdinalIgnoreCase)
+                : null;
+
             while (queue.Count > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var dir = queue.Dequeue();
+
+                long dirStart = logIndex ? Stopwatch.GetTimestamp() : 0;
+                int dirBefore = result.Count;
 
                 try
                 {
@@ -173,6 +193,14 @@ public sealed class FileIndexService
                     // Skip files we cannot enumerate.
                 }
 
+                if (perDrive is not null)
+                {
+                    string root = System.IO.Path.GetPathRoot(dir) ?? dir;
+                    var cur = perDrive.TryGetValue(root, out var v) ? v : default;
+                    perDrive[root] = (cur.Ms + Stopwatch.GetElapsedTime(dirStart).TotalMilliseconds,
+                                      cur.Count + (result.Count - dirBefore));
+                }
+
                 if (result.Count - lastReported >= 20000)
                 {
                     lastReported = result.Count;
@@ -182,6 +210,14 @@ public sealed class FileIndexService
 
             _items = result.ToArray();
             SaveCache(_items);
+
+            if (perDrive is not null)
+            {
+                foreach (var kv in perDrive)
+                    IndexLog.LogDrive(kv.Key, kv.Value.Count, kv.Value.Ms);
+                IndexLog.LogRebuildTotal(_items.Length, Stopwatch.GetElapsedTime(buildStart).TotalMilliseconds);
+            }
+
             StatusChanged?.Invoke(Loc.T("index.done", _items.Length.ToString("N0")));
         }
         catch (OperationCanceledException)

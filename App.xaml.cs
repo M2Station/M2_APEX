@@ -70,6 +70,13 @@ public partial class App : System.Windows.Application
         _windowIcon = Assets.M2Logo.RenderBitmap(64, Assets.M2Logo.Foreground, Assets.M2Logo.BadgeBackground);
 
         _settings = AppSettings.Load();
+        PerfLog.Enabled = _settings.EnablePerformanceLog;
+        SystemLog.Enabled = _settings.EnableSystemLog;
+        SearchLog.Enabled = _settings.EnableSearchLog;
+        IndexLog.Enabled = _settings.EnableIndexLog;
+        PerfLog.Mark("startup: settings loaded");
+        SystemLog.Snapshot();
+        SystemLog.HookPowerEvents();
         ThemeManager.Apply(_settings.Theme);
         Loc.Current = string.IsNullOrEmpty(_settings.Language) ? Loc.SystemLanguage() : _settings.Language;
         _usage = new UsageTracker();
@@ -93,13 +100,26 @@ public partial class App : System.Windows.Application
             Dispatcher.BeginInvoke(() => _viewModel.Status = status);
 
         _hotkey = new HotkeyService(_settings);
-        _hotkey.Triggered += () => Dispatcher.BeginInvoke(() => _window.ToggleSearch());
+        _hotkey.Triggered += OnHotkeyTriggered;
         _hotkey.KeyFilter = _quickSwitch.OnKeyDown;
         _hotkey.Install();
+        PerfLog.Mark("startup: hotkey installed");
 
         SetupTray();
         StartBackgroundIndexing();
         StartUpdateCheck();
+        PerfLog.Mark("startup: initialization complete");
+    }
+
+    /// <summary>Handles a hotkey trigger, timing the gesture → search-bar path when performance logging is on.</summary>
+    private void OnHotkeyTriggered()
+    {
+        long started = PerfLog.StartTimestamp();
+        Dispatcher.BeginInvoke(() =>
+        {
+            _window.ToggleSearch();
+            PerfLog.LogElapsed("hotkey \u2192 toggle search", started);
+        });
     }
 
     private void SetupTray()
@@ -149,14 +169,20 @@ public partial class App : System.Windows.Application
 
     private void StartBackgroundIndexing()
     {
-        _ = _appIndex.BuildAsync();
+        long appIndexStart = PerfLog.StartTimestamp();
+        _ = _appIndex.BuildAsync().ContinueWith(_ => PerfLog.LogElapsed("app index built", appIndexStart));
 
         // Load the (potentially large) index cache off the UI thread so launch stays responsive.
         _ = Task.Run(() =>
         {
+            long cacheStart = PerfLog.StartTimestamp();
             _fileIndex.LoadCache();
+            PerfLog.LogElapsed("file index cache loaded", cacheStart);
             if (_fileIndex.Count == 0)
-                _ = _fileIndex.BuildAsync();
+            {
+                long buildStart = PerfLog.StartTimestamp();
+                _ = _fileIndex.BuildAsync().ContinueWith(_ => PerfLog.LogElapsed("file index built", buildStart));
+            }
         });
     }
 
@@ -212,6 +238,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemLog.UnhookPowerEvents();
         _hotkey?.Dispose();
 
         if (_tray is not null)
