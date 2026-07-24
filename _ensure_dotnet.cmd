@@ -9,6 +9,15 @@ rem  Returns errorlevel 1 if a usable SDK could not be provided.
 rem  NOTE: intentionally no setlocal - PATH changes must reach the caller.
 rem ============================================================
 
+rem eWDK / Visual Studio shells export MSBuildSDKsPath pointing at the .NET
+rem Framework SDK (e.g. NETFXSDK\4.7.2). That path takes priority over the
+rem .NET Core SDK resolver, so every build fails with:
+rem   error MSB4236: The SDK 'Microsoft.NET.Sdk' specified could not be found
+rem even though dotnet --list-sdks shows a valid 9.0.x SDK. Clear it here so
+rem the Core SDK resolves. No setlocal above, so this reaches the calling
+rem Build_*.cmd and its dotnet publish/build step.
+set "MSBuildSDKsPath="
+
 rem Required SDK major version, read from <TargetFramework> netX.0 in the csproj.
 set "_EDN_MAJOR=9"
 for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command "[regex]::Match((Get-Content '%~dp0M2_APEX.csproj' -Raw),'net(\d+)\.').Groups[1].Value" 2^>nul`) do if not "%%v"=="" set "_EDN_MAJOR=%%v"
