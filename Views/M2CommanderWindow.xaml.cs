@@ -427,7 +427,7 @@ public partial class M2CommanderWindow : Window
     {
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -443,7 +443,7 @@ public partial class M2CommanderWindow : Window
             string arg = string.IsNullOrEmpty(_active.Dir) || _active.Dir == DrivesView
                 ? "shell:MyComputerFolder"
                 : $"\"{_active.Dir}\"";
-            Process.Start(new ProcessStartInfo("explorer.exe", arg) { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo("explorer.exe", arg) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -510,7 +510,7 @@ public partial class M2CommanderWindow : Window
 
         try
         {
-            Process.Start(new ProcessStartInfo("notepad.exe", $"\"{sel.Path}\"") { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo("notepad.exe", $"\"{sel.Path}\"") { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -1394,7 +1394,7 @@ public partial class M2CommanderWindow : Window
 
         try
         {
-            Process.Start(new ProcessStartInfo(cmd.Path, args) { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo(cmd.Path, args) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
@@ -1469,7 +1469,7 @@ public partial class M2CommanderWindow : Window
 
         try
         {
-            Process.Start(new ProcessStartInfo(exe, $"\"{left}\" \"{right}\"") { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo(exe, $"\"{left}\" \"{right}\"") { UseShellExecute = true });
         }
         catch (Exception ex)
         {

@@ -312,7 +312,7 @@ public sealed class QuickSwitchService
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true });
+                    ProcessLauncher.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true });
                 }
                 catch
                 {

@@ -82,7 +82,10 @@ public sealed class HotkeyService : IDisposable
         // Skip input that isn't meant for this PC: synthetic keystrokes, or — while a KVM is
         // running — keys typed after the shared pointer moved to another computer.
         if (_settings.IgnoreForeignInput && IsForeignInput(data))
+        {
+            LogForeignCtrl(data);
             return false;
+        }
 
         bool isDown = message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN;
         bool isUp = message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP;
@@ -133,19 +136,30 @@ public sealed class HotkeyService : IDisposable
             {
                 int now = Environment.TickCount;
                 int delta = now - _lastCtrlTapTime;
+                int threshold = _settings.DoubleCtrlThresholdMs;
 
-                if (_lastCtrlTapTime != 0 && delta > 0 && delta <= _settings.DoubleCtrlThresholdMs)
+                if (_lastCtrlTapTime != 0 && delta > 0 && delta <= threshold)
                 {
-                    LogDoubleCtrl(delta, triggered: true);
+                    LogHotkey($"double-Ctrl gap {delta} ms (threshold {threshold} ms) \u2192 triggered");
                     _lastCtrlTapTime = 0;
                     RaiseTriggered();
                 }
-                else
+                else if (_lastCtrlTapTime != 0 && delta > 0)
                 {
-                    if (_lastCtrlTapTime != 0 && delta > 0)
-                        LogDoubleCtrl(delta, triggered: false);
+                    LogHotkey($"double-Ctrl gap {delta} ms (threshold {threshold} ms) \u2192 too slow, counted as a new 1st tap");
                     _lastCtrlTapTime = now;
                 }
+                else
+                {
+                    LogHotkey("1st Ctrl tap registered \u2014 waiting for the 2nd");
+                    _lastCtrlTapTime = now;
+                }
+            }
+            else if (_settings.EnableDoubleCtrl)
+            {
+                // A non-Ctrl key was pressed during the hold, so this Ctrl was part of a shortcut.
+                LogHotkey("Ctrl released, but another key was pressed during the hold \u2014 not a double-Ctrl");
+                _lastCtrlTapTime = 0;
             }
             else
             {
@@ -157,18 +171,56 @@ public sealed class HotkeyService : IDisposable
     }
 
     /// <summary>
-    /// Records the gap between the two Ctrl taps to the performance log so the double-Ctrl threshold can
-    /// be tuned from real data. Off-loaded to the thread pool: the low-level keyboard hook thread must
-    /// never block on disk I/O (it runs under a system timeout).
+    /// Records a double-Ctrl decision — with the foreground app — to the hotkey log, so a gesture that
+    /// silently fails to open the search bar can be diagnosed from real data: taps just over the
+    /// threshold, a key pressed mid-hold, or (a common one) no entries at all while one specific app is
+    /// focused, which means that app runs elevated and starves this non-elevated hook (UIPI). Off-loaded
+    /// to the thread pool: the low-level keyboard hook thread must never block on disk I/O (it runs under
+    /// a system timeout), and resolving the process name can be comparatively slow.
     /// </summary>
-    private void LogDoubleCtrl(int deltaMs, bool triggered)
+    private void LogHotkey(string detail)
     {
-        if (!PerfLog.Enabled)
+        if (!HotkeyLog.Enabled)
             return;
 
-        int threshold = _settings.DoubleCtrlThresholdMs;
-        string outcome = triggered ? "triggered" : "too slow (> threshold)";
-        _ = Task.Run(() => PerfLog.Mark($"double-Ctrl gap {deltaMs} ms (threshold {threshold} ms) \u2192 {outcome}"));
+        IntPtr foreground = NativeMethods.GetForegroundWindow();
+        _ = Task.Run(() => HotkeyLog.Log($"{detail} \u00B7 focus: {ForegroundProcessName(foreground)}"));
+    }
+
+    /// <summary>Logs a Ctrl key dropped as foreign input (injected / KVM), so that path is visible too.</summary>
+    private void LogForeignCtrl(NativeMethods.KBDLLHOOKSTRUCT data)
+    {
+        if (!HotkeyLog.Enabled)
+            return;
+
+        int vk = (int)data.vkCode;
+        if (vk is not (NativeMethods.VK_LCONTROL or NativeMethods.VK_RCONTROL or NativeMethods.VK_CONTROL))
+            return; // Only Ctrl matters to the double-Ctrl gesture; ignore the rest to keep the log quiet.
+
+        bool injected = (data.flags & LlkhfInjected) != 0;
+        string why = injected ? "injected / synthetic input" : "KVM active and local pointer hidden";
+        LogHotkey($"Ctrl ignored as foreign input ({why}); turn off \u201cIgnore foreign input\u201d if this is the PC you type on");
+    }
+
+    /// <summary>Best-effort process name (e.g. "Code", "explorer") for a window handle; "?" on failure.</summary>
+    private static string ForegroundProcessName(IntPtr hwnd)
+    {
+        try
+        {
+            if (hwnd == IntPtr.Zero)
+                return "<none>";
+
+            _ = NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+            if (pid == 0)
+                return "?";
+
+            using var proc = Process.GetProcessById((int)pid);
+            return proc.ProcessName;
+        }
+        catch
+        {
+            return "?";
+        }
     }
 
     private bool IsForeignInput(NativeMethods.KBDLLHOOKSTRUCT data)

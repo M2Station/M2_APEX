@@ -50,7 +50,7 @@ public sealed class CommandProvider
     {
         try
         {
-            Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo(file, args) { UseShellExecute = true });
         }
         catch
         {

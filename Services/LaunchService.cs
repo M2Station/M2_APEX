@@ -59,7 +59,7 @@ public sealed class LaunchService
             if (args.Length > 0)
                 psi.Arguments = args;
 
-            Process.Start(psi);
+            ProcessLauncher.Start(psi);
         }
         catch (Exception ex)
         {
@@ -76,14 +76,14 @@ public sealed class LaunchService
         {
             if (File.Exists(result.Path))
             {
-                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{result.Path}\"")
+                ProcessLauncher.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{result.Path}\"")
                 {
                     UseShellExecute = true
                 });
             }
             else if (Directory.Exists(result.Path))
             {
-                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{result.Path}\"")
+                ProcessLauncher.Start(new ProcessStartInfo("explorer.exe", $"\"{result.Path}\"")
                 {
                     UseShellExecute = true
                 });
@@ -115,7 +115,7 @@ public sealed class LaunchService
             if (asAdmin)
                 psi.Verb = "runas";
 
-            Process.Start(psi);
+            ProcessLauncher.Start(psi);
         }
         catch (Exception ex)
         {
@@ -127,7 +127,7 @@ public sealed class LaunchService
     {
         try
         {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            ProcessLauncher.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch (Exception ex)
         {

@@ -69,6 +69,9 @@ public sealed class AppSettings
     /// <summary>When true, logs per-drive index scan timings to <c>DEBUG_LOG\index.log</c>.</summary>
     public bool EnableIndexLog { get; set; }
 
+    /// <summary>When true, logs every double-Ctrl decision (with the foreground app) to <c>DEBUG_LOG\hotkey.log</c>.</summary>
+    public bool EnableHotkeyLog { get; set; }
+
     /// <summary>
     /// Ordered list of locations that rank search results higher (earlier entries win).
     /// Each entry is a folder path (e.g. <c>C:\</c>, <c>D:\Projects</c>, <c>%USERPROFILE%\src</c>)
