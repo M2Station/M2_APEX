@@ -117,14 +117,22 @@ public partial class App : System.Windows.Application
         PerfLog.Mark("startup: initialization complete");
     }
 
-    /// <summary>Handles a hotkey trigger, timing the gesture → search-bar path when performance logging is on.</summary>
-    private void OnHotkeyTriggered()
+    /// <summary>Handles a hotkey trigger, timing the gesture → target path when performance logging is on.</summary>
+    private void OnHotkeyTriggered(HotkeyTarget target)
     {
         long started = PerfLog.StartTimestamp();
         Dispatcher.BeginInvoke(() =>
         {
-            _window.ToggleSearch();
-            PerfLog.LogElapsed("hotkey \u2192 toggle search", started);
+            if (target == HotkeyTarget.Commander)
+            {
+                OpenCommander(null);
+                PerfLog.LogElapsed("hotkey \u2192 open commander", started);
+            }
+            else
+            {
+                _window.ToggleSearch();
+                PerfLog.LogElapsed("hotkey \u2192 toggle search", started);
+            }
         });
     }
 

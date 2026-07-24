@@ -38,8 +38,8 @@ public sealed class HotkeyService : IDisposable
         _settings = settings;
     }
 
-    /// <summary>Raised when a configured trigger gesture is detected.</summary>
-    public event Action? Triggered;
+    /// <summary>Raised when a configured trigger gesture is detected, carrying which app to open.</summary>
+    public event Action<HotkeyTarget>? Triggered;
 
     /// <summary>
     /// Optional fast filter invoked for every key-down. Return <c>true</c> to swallow the key.
@@ -94,7 +94,7 @@ public sealed class HotkeyService : IDisposable
         // Alt+Space
         if (_settings.EnableAltSpace && isDown && vk == VkSpace && (data.flags & LlkhfAltDown) != 0)
         {
-            RaiseTriggered();
+            RaiseTriggered(_settings.AltSpaceTarget);
             return true;
         }
 
@@ -142,7 +142,7 @@ public sealed class HotkeyService : IDisposable
                 {
                     LogHotkey($"double-Ctrl gap {delta} ms (threshold {threshold} ms) \u2192 triggered");
                     _lastCtrlTapTime = 0;
-                    RaiseTriggered();
+                    RaiseTriggered(_settings.DoubleCtrlTarget);
                 }
                 else if (_lastCtrlTapTime != 0 && delta > 0)
                 {
@@ -302,7 +302,7 @@ public sealed class HotkeyService : IDisposable
         }
     }
 
-    private void RaiseTriggered() => Triggered?.Invoke();
+    private void RaiseTriggered(HotkeyTarget target) => Triggered?.Invoke(target);
 
     private static bool IsKeyDown(int vk) => (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
 

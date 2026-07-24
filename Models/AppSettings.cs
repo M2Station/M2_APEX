@@ -16,12 +16,29 @@ public enum BarPosition
     BottomRight
 }
 
+/// <summary>Which app a global hotkey gesture opens.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum HotkeyTarget
+{
+    /// <summary>Open the M2_APEX search bar (the default).</summary>
+    Apex,
+
+    /// <summary>Open the M2 Commander file manager.</summary>
+    Commander
+}
+
 /// <summary>User-configurable settings, persisted as JSON in %AppData%\Listly.</summary>
 public sealed class AppSettings
 {
     public bool EnableDoubleCtrl { get; set; } = true;
 
     public bool EnableAltSpace { get; set; } = true;
+
+    /// <summary>Which app the double-tap Ctrl gesture opens (default: the M2_APEX search bar).</summary>
+    public HotkeyTarget DoubleCtrlTarget { get; set; } = HotkeyTarget.Apex;
+
+    /// <summary>Which app the Alt+Space gesture opens (default: M2 Commander).</summary>
+    public HotkeyTarget AltSpaceTarget { get; set; } = HotkeyTarget.Commander;
 
     /// <summary>Type-to-jump inside Windows File Explorer (Listary's Quick Switch).</summary>
     public bool EnableQuickSwitch { get; set; } = true;

@@ -265,14 +265,32 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="{b:Loc settings.activation}" Style="{StaticResource Header}" Margin="0,0,0,6" />
-                        <CheckBox x:Name="DoubleCtrlBox" Content="{b:Loc settings.doubleCtrl}" />
-                        <CheckBox x:Name="AltSpaceBox" Content="{b:Loc settings.altSpace}" />
-                        <CheckBox x:Name="QuickSwitchBox" Content="{b:Loc settings.quickSwitch}" />
-                        <CheckBox x:Name="ForeignInputBox" Content="{b:Loc settings.foreignInput}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,6">
-                            <TextBlock Text="{b:Loc settings.doubleCtrlGap}" VerticalAlignment="Center" />
-                            <TextBox x:Name="ThresholdBox" Width="70" Margin="10,0,0,0" />
+
+                        <!-- Double-tap Ctrl: enable + which app it opens -->
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <CheckBox x:Name="DoubleCtrlBox" Content="{b:Loc settings.doubleCtrl}" VerticalAlignment="Center" Width="200" />
+                            <TextBlock Text="{b:Loc settings.hotkeyTrigger}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                            <ComboBox x:Name="DoubleCtrlTargetBox" Width="150" HorizontalAlignment="Left"
+                                      Style="{StaticResource ThemeCombo}" />
                         </StackPanel>
+                        <!-- Double-tap Ctrl max gap sits directly under the double-tap Ctrl row -->
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,2">
+                            <TextBlock Text="{b:Loc settings.doubleCtrlGap}" VerticalAlignment="Center" Width="200" />
+                            <TextBox x:Name="ThresholdBox" Width="70" />
+                        </StackPanel>
+
+                        <!-- Alt+Space: enable + which app it opens -->
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <CheckBox x:Name="AltSpaceBox" Content="{b:Loc settings.altSpace}" VerticalAlignment="Center" Width="200" />
+                            <TextBlock Text="{b:Loc settings.hotkeyTrigger}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Foreground="{DynamicResource ThemeSubtleBrush}" />
+                            <ComboBox x:Name="AltSpaceTargetBox" Width="150" HorizontalAlignment="Left"
+                                      Style="{StaticResource ThemeCombo}" />
+                        </StackPanel>
+
+                        <CheckBox x:Name="QuickSwitchBox" Content="{b:Loc settings.quickSwitch}" Margin="0,8,0,0" />
+                        <CheckBox x:Name="ForeignInputBox" Content="{b:Loc settings.foreignInput}" />
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <TextBlock Text="{b:Loc settings.searchPos}" VerticalAlignment="Center" Width="180" />
                             <ComboBox x:Name="SearchPosBox" Width="150" HorizontalAlignment="Left"

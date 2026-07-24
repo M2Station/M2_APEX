@@ -19,6 +19,7 @@ public partial class SettingsWindow : Window
     private readonly ObservableCollection<QuickPickRow> _editSearchLinks = new();
     private readonly IReadOnlyList<ThemeManager.ThemeInfo> _themes = ThemeManager.Themes;
     private static string[] PositionLabels => new[] { Loc.T("pos.top"), Loc.T("pos.center"), Loc.T("pos.bottom"), Loc.T("pos.topLeft"), Loc.T("pos.bottomRight") };
+    private static string[] HotkeyTargetLabels => new[] { Loc.T("hotkey.targetApex"), Loc.T("hotkey.targetCommander") };
     private bool _loadingTheme;
     private bool _loadingLanguage;
 
@@ -63,6 +64,10 @@ public partial class SettingsWindow : Window
         QuickSwitchBox.IsChecked = _settings.EnableQuickSwitch;
         ForeignInputBox.IsChecked = _settings.IgnoreForeignInput;
         ThresholdBox.Text = _settings.DoubleCtrlThresholdMs.ToString();
+        DoubleCtrlTargetBox.ItemsSource = HotkeyTargetLabels;
+        DoubleCtrlTargetBox.SelectedIndex = (int)_settings.DoubleCtrlTarget;
+        AltSpaceTargetBox.ItemsSource = HotkeyTargetLabels;
+        AltSpaceTargetBox.SelectedIndex = (int)_settings.AltSpaceTarget;
         SearchPosBox.ItemsSource = PositionLabels;
         SearchPosBox.SelectedIndex = (int)_settings.SearchBarPosition;
         QuickPosBox.ItemsSource = PositionLabels;
@@ -109,6 +114,8 @@ public partial class SettingsWindow : Window
     {
         _settings.EnableDoubleCtrl = DoubleCtrlBox.IsChecked == true;
         _settings.EnableAltSpace = AltSpaceBox.IsChecked == true;
+        _settings.DoubleCtrlTarget = (HotkeyTarget)Math.Max(0, DoubleCtrlTargetBox.SelectedIndex);
+        _settings.AltSpaceTarget = (HotkeyTarget)Math.Max(0, AltSpaceTargetBox.SelectedIndex);
         _settings.EnableQuickSwitch = QuickSwitchBox.IsChecked == true;
         _settings.IgnoreForeignInput = ForeignInputBox.IsChecked == true;
         _settings.ShowFilesFirst = FilesFirstBox.IsChecked == true;
