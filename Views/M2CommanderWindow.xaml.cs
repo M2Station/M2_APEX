@@ -451,6 +451,61 @@ public partial class M2CommanderWindow : Window
         }
     }
 
+    /// <summary>True when the active pane shows a real filesystem folder (not the "This PC" drives view).</summary>
+    private bool ActiveDirIsReal() =>
+        !string.IsNullOrEmpty(_active.Dir) && _active.Dir != DrivesView && Directory.Exists(_active.Dir);
+
+    /// <summary>Opens an elevated PowerShell (PowerShell 7 when present, else Windows PowerShell) in the
+    /// active pane's folder. UAC resets the working directory, so the folder is applied via Set-Location.</summary>
+    private void OpenPowerShellAdminHere()
+    {
+        if (!ActiveDirIsReal())
+            return;
+
+        string dir = _active.Dir;
+        string exe = PowerShellLocator.Best(_fileIndex)?.Path ?? "powershell.exe";
+        // Single quotes in the path are doubled so the PowerShell single-quoted string stays valid.
+        string safeDir = dir.Replace("'", "''");
+        RunElevatedTerminal(exe, $"-NoExit -Command \"Set-Location -LiteralPath '{safeDir}'\"", dir);
+    }
+
+    /// <summary>Opens an elevated Command Prompt in the active pane's folder (cd /d survives UAC's reset).</summary>
+    private void OpenCmdAdminHere()
+    {
+        if (!ActiveDirIsReal())
+            return;
+
+        string dir = _active.Dir;
+        // A folder path can never contain a double quote (a reserved character), so quoting is injection-safe.
+        RunElevatedTerminal("cmd.exe", $"/K cd /d \"{dir}\"", dir);
+    }
+
+    /// <summary>
+    /// Launches <paramref name="fileName"/> elevated: the "runas" verb triggers UAC when the app is not
+    /// already elevated (and ProcessLauncher leaves an explicit elevation request untouched). A UAC prompt
+    /// the user cancels is ignored; any other failure is surfaced.
+    /// </summary>
+    private void RunElevatedTerminal(string fileName, string arguments, string workingDir)
+    {
+        try
+        {
+            ProcessLauncher.Start(new ProcessStartInfo(fileName, arguments)
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WorkingDirectory = workingDir,
+            });
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // ERROR_CANCELLED — the user dismissed the UAC prompt; nothing to do.
+        }
+        catch (Exception ex)
+        {
+            Warn(ex.Message);
+        }
+    }
+
     /// <summary>
     /// Opens a quick link. Web pages (http/https) open in the default browser; a file opens with
     /// its default app; a folder / drive / UNC path (including a bare server like \\host) is browsed
@@ -1309,6 +1364,9 @@ public partial class M2CommanderWindow : Window
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFolder"), string.Empty, true, PromptMkdir));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.newFile"), string.Empty, true, NewTextFile));
         menu.Items.Add(ActionItem(Loc.T("commander.menu.openExplorer"), string.Empty, true, OpenInExplorer));
+        bool hasDir = ActiveDirIsReal();
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.openPwshAdmin"), string.Empty, hasDir, OpenPowerShellAdminHere));
+        menu.Items.Add(ActionItem(Loc.T("commander.menu.openCmdAdmin"), string.Empty, hasDir, OpenCmdAdminHere));
         if (BeyondCompareCommand() is not null)
         {
             menu.Items.Add(ActionItem(Loc.T("commander.menu.bcLeft"), string.Empty, hasItem, SelectBeyondCompareLeft));
@@ -1499,7 +1557,26 @@ public partial class M2CommanderWindow : Window
         AutoDetectResult.Text = string.Empty;
         CommandEditorList.ItemsSource = _editCommands;
         LinkEditorList.ItemsSource = _editLinks;
+        CommandEditorTranslate.X = CommandEditorTranslate.Y = 0;
         CommandEditorOverlay.Visibility = Visibility.Visible;
+    }
+
+    // --- M2 Commander Settings overlay: draggable title bar + bottom-right resize grip -----------
+
+    /// <summary>Moves the settings panel by the title-bar drag delta (a translate offset from centre).</summary>
+    private void OnCommandEditorDrag(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        CommandEditorTranslate.X += e.HorizontalChange;
+        CommandEditorTranslate.Y += e.VerticalChange;
+    }
+
+    /// <summary>Resizes the settings panel from the bottom-right grip, clamped to sane min/overlay bounds.</summary>
+    private void OnCommandEditorResize(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        double maxW = Math.Max(CommandEditorCard.MinWidth, CommandEditorOverlay.ActualWidth - 24);
+        double maxH = Math.Max(CommandEditorCard.MinHeight, CommandEditorOverlay.ActualHeight - 24);
+        CommandEditorCard.Width = Math.Clamp(CommandEditorCard.ActualWidth + e.HorizontalChange, CommandEditorCard.MinWidth, maxW);
+        CommandEditorCard.Height = Math.Clamp(CommandEditorCard.ActualHeight + e.VerticalChange, CommandEditorCard.MinHeight, maxH);
     }
 
     private void OnCommandAddClick(object sender, RoutedEventArgs e) =>
@@ -1538,10 +1615,17 @@ public partial class M2CommanderWindow : Window
     /// </summary>
     private void OnCommandAutoDetectClick(object sender, RoutedEventArgs e)
     {
-        foreach (var label in new[] { "M2_ST4", "M2_LOG", "VS Code" })
+        foreach (var label in new[] { "M2_ST4", "M2_LOG", "VS Code", "PowerShell" })
         {
             if (!_editCommands.Any(c => string.Equals(c.Label?.Trim(), label, StringComparison.OrdinalIgnoreCase)))
-                _editCommands.Add(new CommanderCommand { Label = label, Arguments = "\"{path}\"" });
+            {
+                var tool = SupportApp.ByLabel(label);
+                _editCommands.Add(new CommanderCommand
+                {
+                    Label = label,
+                    Arguments = string.IsNullOrEmpty(tool?.Arguments) ? "\"{path}\"" : tool.Arguments
+                });
+            }
         }
 
         int filled = 0, targets = 0;
@@ -1551,7 +1635,10 @@ public partial class M2CommanderWindow : Window
                 continue;
 
             targets++;
-            var found = DetectProgram(cmd.Label);
+            // PowerShell may be installed twice (Windows PowerShell 5.1 + PowerShell 7); let the user choose.
+            var found = IsPowerShellLabel(cmd.Label)
+                ? ChoiceDialog.PickPowerShell(this, _fileIndex)
+                : DetectProgram(cmd.Label);
             if (found is null)
                 continue;
 
@@ -1563,6 +1650,10 @@ public partial class M2CommanderWindow : Window
 
         AutoDetectResult.Text = Loc.T("commander.cmd.autoResult", filled, targets);
     }
+
+    /// <summary>True for the built-in "PowerShell" launcher label, which needs special multi-install detection.</summary>
+    private static bool IsPowerShellLabel(string? label) =>
+        string.Equals(label?.Trim(), "PowerShell", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Resolves a launcher label to an executable path: first the matching catalog tool's known

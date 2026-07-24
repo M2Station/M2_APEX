@@ -58,8 +58,15 @@ public sealed class LaunchService
             var psi = new ProcessStartInfo(target) { UseShellExecute = true };
             if (args.Length > 0)
                 psi.Arguments = args;
+            // Elevate via UAC when the quick pick is marked admin; ProcessLauncher leaves "runas" as-is.
+            if (link.Admin)
+                psi.Verb = "runas";
 
             ProcessLauncher.Start(psi);
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // ERROR_CANCELLED — the user dismissed the UAC prompt; nothing to do.
         }
         catch (Exception ex)
         {

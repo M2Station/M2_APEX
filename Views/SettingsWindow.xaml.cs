@@ -86,7 +86,8 @@ public partial class SettingsWindow : Window
             {
                 Name = link.Name ?? string.Empty,
                 Target = target,
-                Arguments = link.Arguments ?? string.Empty
+                Arguments = link.Arguments ?? string.Empty,
+                Admin = link.Admin
             });
         }
         SearchLinkList.ItemsSource = _editSearchLinks;
@@ -144,7 +145,8 @@ public partial class SettingsWindow : Window
             {
                 Name = (l.Name ?? string.Empty).Trim(),
                 Target = (l.Target ?? string.Empty).Trim(),
-                Arguments = (l.Arguments ?? string.Empty).Trim()
+                Arguments = (l.Arguments ?? string.Empty).Trim(),
+                Admin = l.Admin
             })
             .ToList();
 
@@ -208,6 +210,24 @@ public partial class SettingsWindow : Window
     /// </summary>
     private void OnQuickPickAutoDetectClick(object sender, RoutedEventArgs e)
     {
+        const string psName = "PowerShell";
+        const string psAdminName = "PowerShell (Admin)";
+        const string cmdAdminName = "Command Prompt (Admin)";
+        const string cmdAdminArgs = "/K cd /d \"{path}\"";
+
+        // Ensure a row exists for a named built-in that is not among the catalog's IsApp tools.
+        void EnsureRow(string name, string? arguments, bool admin)
+        {
+            if (_editSearchLinks.Any(r => string.Equals((r.Name ?? string.Empty).Trim(), name, StringComparison.OrdinalIgnoreCase)))
+                return;
+            _editSearchLinks.Add(new QuickPickRow
+            {
+                Name = name,
+                Arguments = string.IsNullOrEmpty(arguments) ? string.Empty : arguments,
+                Admin = admin
+            });
+        }
+
         foreach (var tool in SupportApp.Catalog.Where(t => t.IsApp))
         {
             if (!_editSearchLinks.Any(r => string.Equals((r.Name ?? string.Empty).Trim(), tool.Label, StringComparison.OrdinalIgnoreCase)))
@@ -218,11 +238,51 @@ public partial class SettingsWindow : Window
                 });
         }
 
+        // Built-ins with no GitHub repo (so not IsApp): elevated PowerShell / Command Prompt only.
+        string? psArgs = SupportApp.ByLabel(psName)?.Arguments;
+        EnsureRow(psAdminName, psArgs, admin: true);
+        EnsureRow(cmdAdminName, cmdAdminArgs, admin: true);
+
+        // Resolve the PowerShell host once (Windows PowerShell 5.1 + PowerShell 7 -> user picks) for the
+        // elevated PowerShell row so the chooser appears at most once per run.
+        string? psPath = null;
+        bool psResolved = false;
+        string? ResolvePs()
+        {
+            if (!psResolved) { psPath = ChoiceDialog.PickPowerShell(this, _fileIndex); psResolved = true; }
+            return psPath;
+        }
+
         int filled = 0, targets = 0;
         foreach (var row in _editSearchLinks)
         {
             if (!string.IsNullOrWhiteSpace(row.Target))
                 continue;
+
+            string name = (row.Name ?? string.Empty).Trim();
+
+            if (string.Equals(name, psAdminName, StringComparison.OrdinalIgnoreCase))
+            {
+                targets++;
+                var chosen = ResolvePs();
+                if (chosen is null)
+                    continue;
+                row.Target = chosen;
+                if (string.IsNullOrWhiteSpace(row.Arguments))
+                    row.Arguments = psArgs ?? "\"{path}\"";
+                filled++;
+                continue;
+            }
+
+            if (string.Equals(name, cmdAdminName, StringComparison.OrdinalIgnoreCase))
+            {
+                targets++;
+                row.Target = CmdPath();
+                if (string.IsNullOrWhiteSpace(row.Arguments))
+                    row.Arguments = cmdAdminArgs;
+                filled++;
+                continue;
+            }
 
             var tool = SupportApp.ByLabel(row.Name);
             if (tool is null)
@@ -240,6 +300,13 @@ public partial class SettingsWindow : Window
         }
 
         QuickAutoDetectResult.Text = Loc.T("settings.quickAutoResult", filled, targets);
+    }
+
+    /// <summary>Full path to the Windows Command Prompt (System32\cmd.exe), or a bare fallback name.</summary>
+    private static string CmdPath()
+    {
+        try { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe"); }
+        catch { return "cmd.exe"; }
     }
 
     /// <summary>Install button (program not detected): opens the app's GitHub releases page to download it.</summary>
@@ -544,6 +611,7 @@ public sealed class QuickPickRow : INotifyPropertyChanged
     private string _target = string.Empty;
     private string _arguments = string.Empty;
     private string _repo = string.Empty;
+    private bool _admin;
 
     /// <summary>Display name; also matches a catalog app (drives the Install / Check Update action).</summary>
     public string Name
@@ -581,6 +649,13 @@ public sealed class QuickPickRow : INotifyPropertyChanged
     {
         get => _arguments;
         set { if (_arguments != value) { _arguments = value; OnChanged(nameof(Arguments)); } }
+    }
+
+    /// <summary>Launch the target elevated (Run as administrator).</summary>
+    public bool Admin
+    {
+        get => _admin;
+        set { if (_admin != value) { _admin = value; OnChanged(nameof(Admin)); } }
     }
 
     /// <summary>GitHub owner/repo resolved from the catalog by <see cref="Name"/>; empty for custom rows.</summary>
